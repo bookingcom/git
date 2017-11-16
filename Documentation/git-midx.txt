@@ -1,0 +1,29 @@
+git-midx(1)
+============
+
+NAME
+----
+git-midx - Write and verify multi-pack-indexes (MIDX files).
+
+
+SYNOPSIS
+--------
+[verse]
+'git midx' [--object-dir <dir>]
+
+DESCRIPTION
+-----------
+Write or verify a MIDX file.
+
+OPTIONS
+-------
+
+--object-dir <dir>::
+	Use given directory for the location of Git objects. We check
+	<dir>/packs/multi-pack-index for the current MIDX file, and
+	<dir>/packs for the pack-files to index.
+
+
+GIT
+---
+Part of the linkgit:git[1] suite
