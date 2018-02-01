@@ -30,6 +30,7 @@ struct strbuf;
 #define GIT_COLOR_BLUE		"\033[34m"
 #define GIT_COLOR_MAGENTA	"\033[35m"
 #define GIT_COLOR_CYAN		"\033[36m"
+#define GIT_COLOR_DARK		"\033[1;30m"
 #define GIT_COLOR_BOLD_RED	"\033[1;31m"
 #define GIT_COLOR_BOLD_GREEN	"\033[1;32m"
 #define GIT_COLOR_BOLD_YELLOW	"\033[1;33m"
@@ -72,26 +73,56 @@ extern int color_stdout_is_tty;
  * Use the first one if you need only color config; the second is a convenience
  * if you are just going to change to git_default_config, too.
  */
-int git_color_config(const char *var, const char *value, void *cb);
-int git_color_default_config(const char *var, const char *value, void *cb);
+extern int git_color_config(const char *var, const char *value, void *cb);
+extern int git_color_default_config(const char *var, const char *value, void *cb);
 
 /*
- * Set the color buffer (which must be COLOR_MAXLEN bytes)
- * to the raw color bytes; this is useful for initializing
- * default color variables.
+ * NEEDSWWORK: document this function or refactor grep.c to stop using this
+ * function.
  */
-void color_set(char *dst, const char *color_bytes);
+extern void color_set(char *dst, const char *color_bytes);
 
-int git_config_colorbool(const char *var, const char *value);
-int want_color(int var);
-int color_parse(const char *value, char *dst);
-int color_parse_mem(const char *value, int len, char *dst);
-__attribute__((format (printf, 3, 4)))
-int color_fprintf(FILE *fp, const char *color, const char *fmt, ...);
-__attribute__((format (printf, 3, 4)))
-int color_fprintf_ln(FILE *fp, const char *color, const char *fmt, ...);
-void color_print_strbuf(FILE *fp, const char *color, const struct strbuf *sb);
+/*
+ * Parse a config option, which can be a boolean or one of
+ * "never", "auto", "always". Return a constant of
+ * GIT_COLOR_NEVER for "never" or negative boolean,
+ * GIT_COLOR_ALWAYS for "always" or a positive boolean,
+ * and GIT_COLOR_AUTO for "auto".
+ */
+extern int git_config_colorbool(const char *var, const char *value);
 
-int color_is_nil(const char *color);
+/*
+ * Resolve the constants as returned by git_config_colorbool()
+ * (specifically "auto") to a boolean answer.
+ */
+extern int want_color(int var);
+
+/*
+ * Translate a Git color from 'value' into a string that the terminal can
+ * interpret and store it into 'dst'. The Git color values are of the form
+ * "foreground [background] [attr]" where fore- and background can be a color
+ * name ("red"), a RGB code (#0xFF0000) or a 256-color-mode from the terminal.
+ */
+extern int color_parse(const char *value, char *dst);
+extern int color_parse_mem(const char *value, int len, char *dst);
+
+/*
+ * Output the formatted string in the specified color (and then reset to normal
+ * color so subsequent output is uncolored). Omits the color encapsulation if
+ * `color` is NULL. The `color_fprintf_ln` prints a new line after resetting
+ * the color. The `color_print_strbuf` prints the given pre-formatted strbuf
+ * instead, up to its first NUL character.
+ */
+__attribute__((format (printf, 3, 4)))
+extern int color_fprintf(FILE *fp, const char *color, const char *fmt, ...);
+__attribute__((format (printf, 3, 4)))
+extern int color_fprintf_ln(FILE *fp, const char *color, const char *fmt, ...);
+extern void color_print_strbuf(FILE *fp, const char *color, const struct strbuf *sb);
+
+/*
+ * Check if the given color is GIT_COLOR_NIL that means "no color selected".
+ * The caller needs to replace the color with the actual desired color.
+ */
+extern int color_is_nil(const char *color);
 
 #endif /* COLOR_H */
