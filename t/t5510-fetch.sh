@@ -748,9 +748,9 @@ test_configured_prune unset unset unset true pruned  kept \
 test_configured_prune_type unset unset unset unset kept kept     "origin --prune-tags" "name"
 test_configured_prune_type unset unset unset unset kept kept     "origin --prune-tags" "link"
 test_configured_prune_type unset unset unset unset pruned pruned "origin --prune --prune-tags" "name"
-test_configured_prune_type unset unset unset unset kept   kept   "origin --prune --prune-tags" "link"
+test_configured_prune_type unset unset unset unset kept   pruned "origin --prune --prune-tags" "link"
 test_configured_prune_type unset unset unset unset pruned pruned "--prune --prune-tags origin" "name"
-test_configured_prune_type unset unset unset unset kept   kept   "--prune --prune-tags origin" "link"
+test_configured_prune_type unset unset unset unset kept   pruned "--prune --prune-tags origin" "link"
 test_configured_prune_type unset unset true  unset pruned pruned "--prune origin" "name"
 test_configured_prune_type unset unset true  unset kept   pruned "--prune origin" "link"
 test_configured_prune_type unset unset unset true  pruned pruned "--prune origin" "name"
@@ -772,7 +772,7 @@ test_expect_success 'remove remote.origin.fetch "one"' '
 	)
 '
 test_configured_prune_type unset unset unset unset kept pruned "origin --prune --prune-tags" "name"
-test_configured_prune_type unset unset unset unset kept kept   "origin --prune --prune-tags" "link"
+test_configured_prune_type unset unset unset unset kept pruned "origin --prune --prune-tags" "link"
 
 test_expect_success 'all boundary commits are excluded' '
 	test_commit base &&
