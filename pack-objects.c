@@ -2,6 +2,7 @@
 #include "object.h"
 #include "pack.h"
 #include "pack-objects.h"
+#include "packfile.h"
 
 static uint32_t locate_object_entry_hash(struct packing_data *pdata,
 					 const unsigned char *sha1,
@@ -86,15 +87,47 @@ struct object_entry *packlist_find(struct packing_data *pdata,
 	return &pdata->objects[pdata->index[i] - 1];
 }
 
+static void prepare_in_pack_by_idx(struct packing_data *pdata)
+{
+	struct packed_git **mapping, *p;
+	int cnt = 0, nr = 1 << OE_IN_PACK_BITS;
+
+	if (getenv("GIT_TEST_FULL_IN_PACK_ARRAY")) {
+		/*
+		 * leave in_pack_by_idx NULL to force in_pack[] to be
+		 * used instead
+		 */
+		return;
+	}
+
+	ALLOC_ARRAY(mapping, nr);
+	mapping[cnt++] = NULL; /* zero index must be mapped to NULL */
+	prepare_packed_git();
+	for (p = packed_git; p; p = p->next, cnt++) {
+		if (cnt == nr) {
+			free(mapping);
+			return;
+		}
+		p->index = cnt;
+		mapping[cnt] = p;
+	}
+	pdata->in_pack_by_idx = mapping;
+}
+
 struct object_entry *packlist_alloc(struct packing_data *pdata,
 				    const unsigned char *sha1,
 				    uint32_t index_pos)
 {
 	struct object_entry *new_entry;
 
+	if (!pdata->nr_objects)
+		prepare_in_pack_by_idx(pdata);
 	if (pdata->nr_objects >= pdata->nr_alloc) {
 		pdata->nr_alloc = (pdata->nr_alloc  + 1024) * 3 / 2;
 		REALLOC_ARRAY(pdata->objects, pdata->nr_alloc);
+
+		if (!pdata->in_pack_by_idx)
+			REALLOC_ARRAY(pdata->in_pack, pdata->nr_alloc);
 	}
 
 	new_entry = pdata->objects + pdata->nr_objects++;
@@ -106,6 +139,9 @@ struct object_entry *packlist_alloc(struct packing_data *pdata,
 		rehash_objects(pdata);
 	else
 		pdata->index[index_pos] = pdata->nr_objects;
+
+	if (pdata->in_pack)
+		pdata->in_pack[pdata->nr_objects - 1] = NULL;
 
 	return new_entry;
 }
