@@ -120,8 +120,15 @@ struct object_entry *packlist_alloc(struct packing_data *pdata,
 {
 	struct object_entry *new_entry;
 
-	if (!pdata->nr_objects)
+	if (!pdata->nr_objects) {
 		prepare_in_pack_by_idx(pdata);
+		if (getenv("GIT_TEST_OE_SIZE_BITS")) {
+			int bits = atoi(getenv("GIT_TEST_OE_SIZE_BITS"));;
+			pdata->oe_size_limit = 1 << bits;
+		}
+		if (!pdata->oe_size_limit)
+			pdata->oe_size_limit = 1 << OE_SIZE_BITS;
+	}
 	if (pdata->nr_objects >= pdata->nr_alloc) {
 		pdata->nr_alloc = (pdata->nr_alloc  + 1024) * 3 / 2;
 		REALLOC_ARRAY(pdata->objects, pdata->nr_alloc);
