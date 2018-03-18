@@ -5,6 +5,13 @@ test_description='basic git gc tests
 
 . ./test-lib.sh
 
+test_expect_success 'setup' '
+	# do not let the amount of physical memory affects gc
+	# behavior, make sure we always pack everything to one pack by
+	# default
+	git config gc.bigPackThreshold 2g
+'
+
 test_expect_success 'gc empty repository' '
 	git gc
 '
@@ -114,6 +121,28 @@ test_expect_success 'background auto gc respects lock for all operations' '
 	# our gc should exit zero without doing anything
 	run_and_wait_for_auto_gc &&
 	test_path_is_file .git/refs/heads/should-be-loose
+'
+
+test_expect_success 'gc --keep-base-pack' '
+	test_create_repo keep-pack &&
+	(
+		cd keep-pack &&
+		for i in 10; do
+			test_commit $i
+		done &&
+		git gc &&
+		( cd .git/objects/pack && ls *.pack ) >pack-list &&
+		test_line_count = 1 pack-list &&
+		BASE_PACK=.git/objects/pack/pack-*.pack &&
+		for i in 10; do
+			test_commit more-$i
+		done &&
+		git gc --keep-base-pack &&
+		( cd .git/objects/pack && ls *.pack ) >pack-list &&
+		test_line_count = 2 pack-list &&
+		test_path_is_file $BASE_PACK &&
+		git fsck
+	)
 '
 
 # DO NOT leave a detached auto gc process running near the end of the
