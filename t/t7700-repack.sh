@@ -194,7 +194,32 @@ test_expect_success 'objects made unreachable by grafts only are kept' '
 	git reflog expire --expire=$test_tick --expire-unreachable=$test_tick --all &&
 	git repack -a -d &&
 	git cat-file -t $H1
-	'
+'
+
+test_expect_success 'repack --keep-pack' '
+	test_create_repo keep-pack &&
+	(
+		cd keep-pack &&
+		test_commit one &&
+		git repack -d &&
+		test_commit two &&
+		git repack -d &&
+		test_commit three &&
+		git repack -d &&
+		test_commit four &&
+		git repack -d &&
+		( cd .git/objects/pack && ls *.pack ) >pack-list &&
+		test_line_count = 4 pack-list &&
+		KEEP1=$(head -n1 pack-list) &&
+		KEEP4=$(tail -n1 pack-list) &&
+		git repack -a -d --keep-pack $KEEP1 --keep-pack $KEEP4 &&
+		ls .git/objects/pack/*.pack >new-counts &&
+		grep -q $KEEP1 new-counts &&
+		grep -q $KEEP4 new-counts &&
+		test_line_count = 3 new-counts &&
+		git fsck
+	)
+'
 
 test_done
 
