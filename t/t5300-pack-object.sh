@@ -16,8 +16,8 @@ test_expect_success \
      perl -e "print \"a\" x 4096;" > a &&
      perl -e "print \"b\" x 4096;" > b &&
      perl -e "print \"c\" x 4096;" > c &&
-     test-genrandom "seed a" 2097152 > a_big &&
-     test-genrandom "seed b" 2097152 > b_big &&
+     test-tool genrandom "seed a" 2097152 > a_big &&
+     test-tool genrandom "seed b" 2097152 > b_big &&
      git update-index --add a a_big b b_big c &&
      cat c >d && echo foo >>d && git update-index --add d &&
      tree=$(git write-tree) &&
@@ -455,6 +455,11 @@ test_expect_success !PTHREADS,C_LOCALE_OUTPUT 'pack-objects --threads=N or pack.
 	test_line_count = 2 warnings &&
 	grep -F "no threads support, ignoring --threads" err &&
 	grep -F "no threads support, ignoring pack.threads" err
+'
+
+test_expect_success 'pack-objects in too-many-packs mode' '
+	GIT_TEST_FULL_IN_PACK_ARRAY=1 git repack -ad &&
+	git fsck
 '
 
 #

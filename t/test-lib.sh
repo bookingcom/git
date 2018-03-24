@@ -264,7 +264,24 @@ do
 		GIT_TEST_CHAIN_LINT=0
 		shift ;;
 	-x)
-		trace=t
+		# Some test scripts can't be reliably traced  with '-x',
+		# unless the test is run with a Bash version supporting
+		# BASH_XTRACEFD (introduced in Bash v4.1).  Check whether
+		# this test is marked as such, and ignore '-x' if it
+		# isn't executed with a suitable Bash version.
+		if test -z "$test_untraceable" || {
+		     test -n "$BASH_VERSION" && {
+		       test ${BASH_VERSINFO[0]} -gt 4 || {
+			 test ${BASH_VERSINFO[0]} -eq 4 &&
+			 test ${BASH_VERSINFO[1]} -ge 1
+		       }
+		     }
+		   }
+		then
+			trace=t
+		else
+			echo >&2 "warning: ignoring -x; '$0' is untraceable without BASH_XTRACEFD"
+		fi
 		shift ;;
 	--verbose-log)
 		verbose_log=t
@@ -946,10 +963,10 @@ test -d "$GIT_BUILD_DIR"/templates/blt || {
 	error "You haven't built things yet, have you?"
 }
 
-if ! test -x "$GIT_BUILD_DIR"/t/helper/test-chmtime
+if ! test -x "$GIT_BUILD_DIR"/t/helper/test-tool
 then
-	echo >&2 'You need to build test-chmtime:'
-	echo >&2 'Run "make t/helper/test-chmtime" in the source (toplevel) directory'
+	echo >&2 'You need to build test-tool:'
+	echo >&2 'Run "make t/helper/test-tool" in the source (toplevel) directory'
 	exit 1
 fi
 
@@ -1189,5 +1206,5 @@ test_lazy_prereq LONG_IS_64BIT '
 	test 8 -le "$(build_option sizeof-long)"
 '
 
-test_lazy_prereq TIME_IS_64BIT 'test-date is64bit'
-test_lazy_prereq TIME_T_IS_64BIT 'test-date time_t-is64bit'
+test_lazy_prereq TIME_IS_64BIT 'test-tool date is64bit'
+test_lazy_prereq TIME_T_IS_64BIT 'test-tool date time_t-is64bit'
