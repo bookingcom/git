@@ -45,6 +45,12 @@ test_expect_success 'git branch HEAD should fail' '
 	test_must_fail git branch HEAD
 '
 
+test_expect_success 'git branch -l no longer is --create-reflog' '
+	test_when_finished "git branch -D new-branch-with-reflog || :" &&
+	test_must_fail git branch -l new-branch-with-reflog &&
+	test_must_fail git rev-parse --verify refs/heads/new-branch-with-reflog
+'
+
 cat >expect <<EOF
 $_z40 $HEAD $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150200 +0000	branch: Created from master
 EOF
@@ -286,6 +292,12 @@ test_expect_success 'git branch --list -v with --abbrev' '
 	test "$objfull" != "$obj36" &&
 	expr "$objfull" : "$obj36" >/dev/null
 
+'
+
+test_expect_failure 'git branch -l eventually is --list' '
+	git branch --list >expect &&
+	git branch -l >actual &&
+	test_cmp expect actual
 '
 
 test_expect_success 'git branch --column' '
