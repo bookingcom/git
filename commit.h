@@ -9,6 +9,8 @@
 #include "string-list.h"
 #include "pretty.h"
 
+#define COMMIT_NOT_FROM_GRAPH 0xFFFFFFFF
+
 struct commit_list {
 	struct commit *item;
 	struct commit_list *next;
@@ -21,6 +23,7 @@ struct commit {
 	timestamp_t date;
 	struct commit_list *parents;
 	struct tree *tree;
+	uint32_t graph_pos;
 };
 
 extern int save_commit_buffer;
@@ -262,14 +265,15 @@ extern void append_merge_tag_headers(struct commit_list *parents,
 				     struct commit_extra_header ***tail);
 
 extern int commit_tree(const char *msg, size_t msg_len,
-		       const unsigned char *tree,
-		       struct commit_list *parents, unsigned char *ret,
+		       const struct object_id *tree,
+		       struct commit_list *parents, struct object_id *ret,
 		       const char *author, const char *sign_commit);
 
 extern int commit_tree_extended(const char *msg, size_t msg_len,
-				const unsigned char *tree,
-				struct commit_list *parents, unsigned char *ret,
-				const char *author, const char *sign_commit,
+				const struct object_id *tree,
+				struct commit_list *parents,
+				struct object_id *ret, const char *author,
+				const char *sign_commit,
 				struct commit_extra_header *);
 
 extern struct commit_extra_header *read_commit_extra_headers(struct commit *, const char **);

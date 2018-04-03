@@ -1,6 +1,8 @@
 #ifndef PACKFILE_H
 #define PACKFILE_H
 
+#include "oidset.h"
+
 /*
  * Generate the filename to be used for a pack file with checksum "sha1" and
  * extension "ext". The result is written into the strbuf "buf", overwriting
@@ -61,6 +63,7 @@ extern void close_pack_index(struct packed_git *);
 
 extern unsigned char *use_pack(struct packed_git *, struct pack_window **, off_t, unsigned long *);
 extern void close_pack_windows(struct packed_git *);
+extern void close_pack(struct packed_git *);
 extern void close_all_packs(void);
 extern void unuse_pack(struct pack_window **);
 extern void clear_delta_base_cache(void);
@@ -125,6 +128,11 @@ extern int has_sha1_pack(const unsigned char *sha1);
 extern int has_pack_index(const unsigned char *sha1);
 
 /*
+ * Only iterate over packs obtained from the promisor remote.
+ */
+#define FOR_EACH_OBJECT_PROMISOR_ONLY 2
+
+/*
  * Iterate over packed objects in both the local
  * repository and any alternates repositories (unless the
  * FOR_EACH_OBJECT_LOCAL_ONLY flag, defined in cache.h, is set).
@@ -133,6 +141,13 @@ typedef int each_packed_object_fn(const struct object_id *oid,
 				  struct packed_git *pack,
 				  uint32_t pos,
 				  void *data);
+extern int for_each_object_in_pack(struct packed_git *p, each_packed_object_fn, void *data);
 extern int for_each_packed_object(each_packed_object_fn, void *, unsigned flags);
+
+/*
+ * Return 1 if an object in a promisor packfile is or refers to the given
+ * object, 0 otherwise.
+ */
+extern int is_promisor_object(const struct object_id *oid);
 
 #endif

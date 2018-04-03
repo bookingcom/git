@@ -27,6 +27,8 @@ int warn_ambiguous_refs = 1;
 int warn_on_object_refname_ambiguity = 1;
 int ref_paranoia = -1;
 int repository_format_precious_objects;
+char *repository_format_partial_clone;
+const char *core_partial_clone_filter_default;
 const char *git_commit_encoding;
 const char *git_log_output_encoding;
 const char *apply_default_whitespace;
@@ -49,7 +51,7 @@ enum auto_crlf auto_crlf = AUTO_CRLF_FALSE;
 int check_replace_refs = 1;
 char *git_replace_ref_base;
 enum eol core_eol = EOL_UNSET;
-enum safe_crlf safe_crlf = SAFE_CRLF_WARN;
+int global_conv_flags_eol = CONV_EOL_RNDTRP_WARN;
 unsigned whitespace_rule_cfg = WS_DEFAULT_RULE;
 enum branch_track git_branch_track = BRANCH_TRACK_REMOTE;
 enum rebase_setup_type autorebase = AUTOREBASE_NEVER;
@@ -60,6 +62,7 @@ enum push_default_type push_default = PUSH_DEFAULT_UNSPECIFIED;
 enum object_creation_mode object_creation_mode = OBJECT_CREATION_MODE;
 char *notes_ref_name;
 int grafts_replace_parents = 1;
+int core_commit_graph;
 int core_apply_sparse_checkout;
 int merge_log_config = -1;
 int precomposed_unicode = -1; /* see probe_utf8_pathname_composition() */
@@ -98,7 +101,7 @@ int ignore_untracked_cache_config;
 /* This is set by setup_git_dir_gently() and/or git_default_config() */
 char *git_work_tree_cfg;
 
-static char *namespace;
+static char *git_namespace;
 
 static const char *super_prefix;
 
@@ -156,8 +159,8 @@ void setup_git_env(void)
 	free(git_replace_ref_base);
 	git_replace_ref_base = xstrdup(replace_ref_base ? replace_ref_base
 							  : "refs/replace/");
-	free(namespace);
-	namespace = expand_namespace(getenv(GIT_NAMESPACE_ENVIRONMENT));
+	free(git_namespace);
+	git_namespace = expand_namespace(getenv(GIT_NAMESPACE_ENVIRONMENT));
 	shallow_file = getenv(GIT_SHALLOW_FILE_ENVIRONMENT);
 	if (shallow_file)
 		set_alternate_shallow_file(shallow_file, 0);
@@ -191,9 +194,9 @@ const char *get_git_common_dir(void)
 
 const char *get_git_namespace(void)
 {
-	if (!namespace)
+	if (!git_namespace)
 		BUG("git environment hasn't been setup");
-	return namespace;
+	return git_namespace;
 }
 
 const char *strip_namespace(const char *namespaced_ref)
@@ -247,7 +250,7 @@ char *get_object_directory(void)
 	return the_repository->objectdir;
 }
 
-int odb_mkstemp(struct strbuf *template, const char *pattern)
+int odb_mkstemp(struct strbuf *temp_filename, const char *pattern)
 {
 	int fd;
 	/*
@@ -255,16 +258,16 @@ int odb_mkstemp(struct strbuf *template, const char *pattern)
 	 * restrictive except to remove write permission.
 	 */
 	int mode = 0444;
-	git_path_buf(template, "objects/%s", pattern);
-	fd = git_mkstemp_mode(template->buf, mode);
+	git_path_buf(temp_filename, "objects/%s", pattern);
+	fd = git_mkstemp_mode(temp_filename->buf, mode);
 	if (0 <= fd)
 		return fd;
 
 	/* slow path */
-	/* some mkstemp implementations erase template on failure */
-	git_path_buf(template, "objects/%s", pattern);
-	safe_create_leading_directories(template->buf);
-	return xmkstemp_mode(template->buf, mode);
+	/* some mkstemp implementations erase temp_filename on failure */
+	git_path_buf(temp_filename, "objects/%s", pattern);
+	safe_create_leading_directories(temp_filename->buf);
+	return xmkstemp_mode(temp_filename->buf, mode);
 }
 
 int odb_pack_keep(const char *name)

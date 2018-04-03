@@ -898,6 +898,10 @@ core.notesRef::
 This setting defaults to "refs/notes/commits", and it can be overridden by
 the `GIT_NOTES_REF` environment variable.  See linkgit:git-notes[1].
 
+core.commitGraph::
+	Enable git commit graph feature. Allows reading from the
+	commit-graph file.
+
 core.sparseCheckout::
 	Enable "sparse checkout" feature. See section "Sparse checkout" in
 	linkgit:git-read-tree[1] for more information.
@@ -1398,7 +1402,16 @@ fetch.unpackLimit::
 
 fetch.prune::
 	If true, fetch will automatically behave as if the `--prune`
-	option was given on the command line.  See also `remote.<name>.prune`.
+	option was given on the command line.  See also `remote.<name>.prune`
+	and the PRUNING section of linkgit:git-fetch[1].
+
+fetch.pruneTags::
+	If true, fetch will automatically behave as if the
+	`refs/tags/*:refs/tags/*` refspec was provided when pruning,
+	if not set already. This allows for setting both this option
+	and `fetch.prune` to maintain a 1=1 mapping to upstream
+	refs. See also `remote.<name>.pruneTags` and the PRUNING
+	section of linkgit:git-fetch[1].
 
 fetch.output::
 	Control how ref update status is printed. Valid values are
@@ -1548,6 +1561,18 @@ gc.autoPackLimit::
 gc.autoDetach::
 	Make `git gc --auto` return immediately and run in background
 	if the system supports it. Default is true.
+
+gc.bigPackThreshold::
+	If non-zero, all packs larger than this limit are kept when
+	`git gc` is run. This is very similar to `--keep-base-pack`
+	except that all packs that meet the threshold are kept, not
+	just the base pack. Defaults to zero. Common unit suffixes of
+	'k', 'm', or 'g' are supported.
++
+Note that if the number of kept packs is more than gc.autoPackLimit,
+this configuration variable is ignored, all packs except the base pack
+will be repacked. After this the number of packs should go below
+gc.autoPackLimit and gc.bigPackThreshold should be respected again.
 
 gc.logExpiry::
 	If the file gc.log exists, then `git gc --auto` won't run
@@ -1948,6 +1973,7 @@ http.sslVersion::
 	- tlsv1.0
 	- tlsv1.1
 	- tlsv1.2
+	- tlsv1.3
 
 +
 Can be overridden by the `GIT_SSL_VERSION` environment variable.
@@ -2412,6 +2438,7 @@ pack.window::
 pack.depth::
 	The maximum delta depth used by linkgit:git-pack-objects[1] when no
 	maximum depth is given on the command line. Defaults to 50.
+	Maximum value is 4095.
 
 pack.windowMemory::
 	The maximum size of memory that is consumed by each thread
@@ -2448,7 +2475,8 @@ pack.deltaCacheLimit::
 	The maximum size of a delta, that is cached in
 	linkgit:git-pack-objects[1]. This cache is used to speed up the
 	writing object phase by not having to recompute the final delta
-	result once the best match for all objects is found. Defaults to 1000.
+	result once the best match for all objects is found.
+	Defaults to 1000. Maximum value is 65535.
 
 pack.threads::
 	Specifies the number of threads to spawn when searching for best
@@ -2945,6 +2973,15 @@ remote.<name>.prune::
 	remote (as if the `--prune` option was given on the command line).
 	Overrides `fetch.prune` settings, if any.
 
+remote.<name>.pruneTags::
+	When set to true, fetching from this remote by default will also
+	remove any local tags that no longer exist on the remote if pruning
+	is activated in general via `remote.<name>.prune`, `fetch.prune` or
+	`--prune`. Overrides `fetch.pruneTags` settings, if any.
++
+See also `remote.<name>.prune` and the PRUNING section of
+linkgit:git-fetch[1].
+
 remotes.<group>::
 	The list of remotes which are fetched by "git remote update
 	<group>".  See linkgit:git-remote[1].
@@ -3210,7 +3247,8 @@ submodule.active::
 
 submodule.recurse::
 	Specifies if commands recurse into submodules by default. This
-	applies to all commands that have a `--recurse-submodules` option.
+	applies to all commands that have a `--recurse-submodules` option,
+	except `clone`.
 	Defaults to false.
 
 submodule.fetchJobs::
@@ -3343,6 +3381,10 @@ uploadpack.packObjectsHook::
 	was run. I.e., `upload-pack` will feed input intended for
 	`pack-objects` to the hook, and expects a completed packfile on
 	stdout.
+
+uploadpack.allowFilter::
+	If this option is set, `upload-pack` will support partial
+	clone and partial fetch object filtering.
 +
 Note that this configuration variable is ignored if it is seen in the
 repository-level config (this is a safety measure against fetching from
