@@ -991,7 +991,7 @@ test_force_push_tag () {
 			git push --force ../child2 'refs/tags/*:refs/tags/*' &&
 			git tag $tag_args Tag HEAD~ &&
 			git push ../child2 '+refs/tags/*:refs/tags/*' &&
-			git tag $tag_args Tag &&function
+			git tag $tag_args Tag &&
 			git push --no-force ../child2 '+refs/tags/*:refs/tags/*' &&
 			git tag $tag_args Tag HEAD~ &&
 			test_must_fail git push ../child2 tag Tag &&
