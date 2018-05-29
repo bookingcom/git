@@ -289,6 +289,12 @@ test_expect_success 'git branch --list -v with --abbrev' '
 
 '
 
+test_expect_success 'git branch -l is --list' '
+	git branch --list >expect &&
+	git branch -l >actual &&
+	test_cmp expect actual
+'
+
 test_expect_success 'git branch --column' '
 	COLUMNS=81 git branch --column=column >actual &&
 	cat >expected <<\EOF &&
