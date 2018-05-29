@@ -3,9 +3,10 @@
 #include "config.h"
 #include "git-compat-util.h"
 #include "parse-options.h"
+#include "midx.h"
 
 static char const * const builtin_midx_usage[] ={
-	N_("git midx [--object-dir <dir>]"),
+	N_("git midx [--object-dir <dir>] [write]"),
 	NULL
 };
 
@@ -33,6 +34,12 @@ int cmd_midx(int argc, const char **argv, const char *prefix)
 
 	if (!opts.object_dir)
 		opts.object_dir = get_object_directory();
+
+	if (argc == 0)
+		return 0;
+
+	if (!strcmp(argv[0], "write"))
+		return write_midx_file(opts.object_dir);
 
 	return 0;
 }
