@@ -6,13 +6,32 @@
 #include "midx.h"
 
 static char const * const builtin_midx_usage[] ={
-	N_("git midx [--object-dir <dir>] [write]"),
+	N_("git midx [--object-dir <dir>] [read|write]"),
 	NULL
 };
 
 static struct opts_midx {
 	const char *object_dir;
 } opts;
+
+static int read_midx_file(const char *object_dir)
+{
+	struct midxed_git *m = load_midxed_git(object_dir);
+
+	if (!m)
+		return 0;
+
+	printf("header: %08x %d %d %d %d\n",
+	       m->signature,
+	       m->version,
+	       m->hash_version,
+	       m->num_chunks,
+	       m->num_packs);
+
+	printf("object_dir: %s\n", m->object_dir);
+
+	return 0;
+}
 
 int cmd_midx(int argc, const char **argv, const char *prefix)
 {
@@ -38,6 +57,8 @@ int cmd_midx(int argc, const char **argv, const char *prefix)
 	if (argc == 0)
 		return 0;
 
+	if (!strcmp(argv[0], "read"))
+		return read_midx_file(opts.object_dir);
 	if (!strcmp(argv[0], "write"))
 		return write_midx_file(opts.object_dir);
 
