@@ -64,20 +64,6 @@ test_expect_success 'write midx with one v1 pack' '
 	midx_read_expect 1 17 5 .
 '
 
-midx_git_two_modes() {
-	git -c core.midx=false $1 >expect &&
-	git -c core.midx=true $1 >actual &&
-	test_cmp expect actual
-}
-
-compare_results_with_midx() {
-	MSG=$1
-	test_expect_success "check normal git operations: $MSG" '
-		midx_git_two_modes "rev-list --objects --all" &&
-		midx_git_two_modes "log --raw"
-	'
-}
-
 test_expect_success 'write midx with one v2 pack' '
 	pack=$(git pack-objects --index-version=2,0x40 $objdir/pack/test <obj-list) &&
 	git midx --object-dir=$objdir write &&
