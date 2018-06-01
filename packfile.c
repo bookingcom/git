@@ -746,6 +746,11 @@ static void prepare_packed_git_one(struct repository *r, char *objdir, int local
 	DIR *dir;
 	struct dirent *de;
 	struct string_list garbage = STRING_LIST_INIT_DUP;
+	struct midxed_git *m = r->objects->midxed_git;
+
+	/* look for the multi-pack-index for this object directory */
+	while (m && strcmp(m->object_dir, objdir))
+		m = m->next;
 
 	strbuf_addstr(&path, objdir);
 	strbuf_addstr(&path, "/pack");
@@ -772,6 +777,8 @@ static void prepare_packed_git_one(struct repository *r, char *objdir, int local
 		base_len = path.len;
 		if (strip_suffix_mem(path.buf, &base_len, ".idx")) {
 			/* Don't reopen a pack we already have. */
+			if (m && midx_contains_pack(m, de->d_name))
+				continue;
 			for (p = r->objects->packed_git; p;
 			     p = p->next) {
 				size_t len;

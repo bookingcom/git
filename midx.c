@@ -278,6 +278,29 @@ int fill_midx_entry(const struct object_id *oid, struct pack_entry *e, struct mi
 	return nth_midxed_pack_entry(m, e, pos);
 }
 
+int midx_contains_pack(struct midxed_git *m, const char *idx_name)
+{
+	uint32_t first = 0, last = m->num_packs;
+
+	while (first < last) {
+		uint32_t mid = first + (last - first) / 2;
+		const char *current;
+		int cmp;
+
+		current = m->pack_names[mid];
+		cmp = strcmp(idx_name, current);
+		if (!cmp)
+			return 1;
+		if (cmp > 0) {
+			first = mid + 1;
+			continue;
+		}
+		last = mid;
+	}
+
+	return 0;
+}
+
 int prepare_midxed_git_one(struct repository *r, const char *object_dir)
 {
 	struct midxed_git *m = r->objects->midxed_git;

@@ -13,6 +13,7 @@ struct object_id *nth_midxed_object_oid(struct object_id *oid,
 					struct midxed_git *m,
 					uint32_t n);
 int fill_midx_entry(const struct object_id *oid, struct pack_entry *e, struct midxed_git *m);
+int midx_contains_pack(struct midxed_git *m, const char *idx_name);
 int prepare_midxed_git_one(struct repository *r, const char *object_dir);
 
 int write_midx_file(const char *object_dir);
