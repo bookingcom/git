@@ -35,6 +35,8 @@ static int read_midx_file(const char *object_dir)
 		printf(" pack_lookup");
 	if (m->chunk_pack_names)
 		printf(" pack_names");
+	if (m->chunk_oid_lookup)
+		printf(" oid_lookup");
 
 	printf("\n");
 
