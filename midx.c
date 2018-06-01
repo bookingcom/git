@@ -14,14 +14,19 @@
 #define MIDX_HASH_LEN 20
 #define MIDX_MIN_SIZE (MIDX_HEADER_SIZE + MIDX_HASH_LEN)
 
-#define MIDX_MAX_CHUNKS 4
+#define MIDX_MAX_CHUNKS 6
 #define MIDX_CHUNK_ALIGNMENT 4
 #define MIDX_CHUNKID_PACKLOOKUP 0x504c4f4f /* "PLOO" */
 #define MIDX_CHUNKID_PACKNAMES 0x504e414d /* "PNAM" */
 #define MIDX_CHUNKID_OIDFANOUT 0x4f494446 /* "OIDF" */
 #define MIDX_CHUNKID_OIDLOOKUP 0x4f49444c /* "OIDL" */
+#define MIDX_CHUNKID_OBJECTOFFSETS 0x4f4f4646 /* "OOFF" */
+#define MIDX_CHUNKID_LARGEOFFSETS 0x4c4f4646 /* "LOFF" */
 #define MIDX_CHUNKLOOKUP_WIDTH (sizeof(uint32_t) + sizeof(uint64_t))
 #define MIDX_CHUNK_FANOUT_SIZE (sizeof(uint32_t) * 256)
+#define MIDX_CHUNK_OFFSET_WIDTH (2 * sizeof(uint32_t))
+#define MIDX_CHUNK_LARGE_OFFSET_WIDTH (sizeof(uint64_t))
+#define MIDX_LARGE_OFFSET_NEEDED 0x80000000
 
 static char *get_midx_filename(const char *object_dir)
 {
@@ -106,6 +111,14 @@ struct midxed_git *load_midxed_git(const char *object_dir)
 				m->chunk_oid_lookup = m->data + chunk_offset;
 				break;
 
+			case MIDX_CHUNKID_OBJECTOFFSETS:
+				m->chunk_object_offsets = m->data + chunk_offset;
+				break;
+
+			case MIDX_CHUNKID_LARGEOFFSETS:
+				m->chunk_large_offsets = m->data + chunk_offset;
+				break;
+
 			case 0:
 				die("terminating MIDX chunk id appears earlier than expected");
 				break;
@@ -127,6 +140,8 @@ struct midxed_git *load_midxed_git(const char *object_dir)
 		die("MIDX missing required OID fanout chunk");
 	if (!m->chunk_oid_lookup)
 		die("MIDX missing required OID lookup chunk");
+	if (!m->chunk_object_offsets)
+		die("MIDX missing required object offsets chunk");
 
 	m->num_objects = ntohl(m->chunk_oid_fanout[255]);
 
@@ -442,6 +457,56 @@ static size_t write_midx_oid_lookup(struct hashfile *f, unsigned char hash_len,
 	return written;
 }
 
+static size_t write_midx_object_offsets(struct hashfile *f, int large_offset_needed,
+					struct pack_midx_entry *objects, uint32_t nr_objects)
+{
+	struct pack_midx_entry *list = objects;
+	uint32_t i, nr_large_offset = 0;
+	size_t written = 0;
+
+	for (i = 0; i < nr_objects; i++) {
+		struct pack_midx_entry *obj = list++;
+
+		hashwrite_be32(f, obj->pack_int_id);
+
+		if (large_offset_needed && obj->offset >> 31)
+			hashwrite_be32(f, MIDX_LARGE_OFFSET_NEEDED | nr_large_offset++);
+		else if (!large_offset_needed && obj->offset >> 32)
+			BUG("object %s requires a large offset (%"PRIx64") but the MIDX is not writing large offsets!",
+			    oid_to_hex(&obj->oid),
+			    obj->offset);
+		else
+			hashwrite_be32(f, (uint32_t)obj->offset);
+
+		written += MIDX_CHUNK_OFFSET_WIDTH;
+	}
+
+	return written;
+}
+
+static size_t write_midx_large_offsets(struct hashfile *f, uint32_t nr_large_offset,
+				       struct pack_midx_entry *objects, uint32_t nr_objects)
+{
+	struct pack_midx_entry *list = objects;
+	size_t written = 0;
+
+	while (nr_large_offset) {
+		struct pack_midx_entry *obj = list++;
+		uint64_t offset = obj->offset;
+
+		if (!(offset >> 31))
+			continue;
+
+		hashwrite_be32(f, offset >> 32);
+		hashwrite_be32(f, offset & 0xffffffff);
+		written += 2 * sizeof(uint32_t);
+
+		nr_large_offset--;
+	}
+
+	return written;
+}
+
 int write_midx_file(const char *object_dir)
 {
 	unsigned char cur_chunk, num_chunks = 0;
@@ -462,7 +527,8 @@ int write_midx_file(const char *object_dir)
 	uint32_t chunk_ids[MIDX_MAX_CHUNKS + 1];
 	uint64_t chunk_offsets[MIDX_MAX_CHUNKS + 1];
 	struct pack_midx_entry *entries;
-	uint32_t nr_entries;
+	uint32_t nr_entries, num_large_offsets = 0;
+	int large_offsets_needed = 0;
 
 	midx_name = get_midx_filename(object_dir);
 	if (safe_create_leading_directories(midx_name)) {
@@ -522,13 +588,19 @@ int write_midx_file(const char *object_dir)
 	sort_packs_by_name(pack_names, nr_packs, pack_perm);
 
 	entries = get_sorted_entries(packs, pack_perm, nr_packs, &nr_entries);
+	for (i = 0; i < nr_entries; i++) {
+		if (entries[i].offset > 0x7fffffff)
+			num_large_offsets++;
+		if (entries[i].offset > 0xffffffff)
+			large_offsets_needed = 1;
+	}
 
 	hold_lock_file_for_update(&lk, midx_name, LOCK_DIE_ON_ERROR);
 	f = hashfd(lk.tempfile->fd, lk.tempfile->filename.buf);
 	FREE_AND_NULL(midx_name);
 
 	cur_chunk = 0;
-	num_chunks = 4;
+	num_chunks = large_offsets_needed ? 6 : 5;
 
 	written = write_midx_header(f, num_chunks, nr_packs);
 
@@ -548,8 +620,20 @@ int write_midx_file(const char *object_dir)
 	chunk_offsets[cur_chunk] = chunk_offsets[cur_chunk - 1] + MIDX_CHUNK_FANOUT_SIZE;
 
 	cur_chunk++;
-	chunk_ids[cur_chunk] = 0;
+	chunk_ids[cur_chunk] = MIDX_CHUNKID_OBJECTOFFSETS;
 	chunk_offsets[cur_chunk] = chunk_offsets[cur_chunk - 1] + nr_entries * MIDX_HASH_LEN;
+
+	cur_chunk++;
+	chunk_offsets[cur_chunk] = chunk_offsets[cur_chunk - 1] + nr_entries * MIDX_CHUNK_OFFSET_WIDTH;
+	if (large_offsets_needed) {
+		chunk_ids[cur_chunk] = MIDX_CHUNKID_LARGEOFFSETS;
+
+		cur_chunk++;
+		chunk_offsets[cur_chunk] = chunk_offsets[cur_chunk - 1] +
+					   num_large_offsets * MIDX_CHUNK_LARGE_OFFSET_WIDTH;
+	}
+
+	chunk_ids[cur_chunk] = 0;
 
 	for (i = 0; i <= num_chunks; i++) {
 		if (i && chunk_offsets[i] < chunk_offsets[i - 1])
@@ -590,6 +674,14 @@ int write_midx_file(const char *object_dir)
 
 			case MIDX_CHUNKID_OIDLOOKUP:
 				written += write_midx_oid_lookup(f, MIDX_HASH_LEN, entries, nr_entries);
+				break;
+
+			case MIDX_CHUNKID_OBJECTOFFSETS:
+				written += write_midx_object_offsets(f, large_offsets_needed, entries, nr_entries);
+				break;
+
+			case MIDX_CHUNKID_LARGEOFFSETS:
+				written += write_midx_large_offsets(f, num_large_offsets, entries, nr_entries);
 				break;
 
 			default:
