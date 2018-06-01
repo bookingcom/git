@@ -919,6 +919,12 @@ struct packed_git *get_packed_git(struct repository *r)
 	return r->objects->packed_git;
 }
 
+struct midxed_git *get_midxed_git(struct repository *r)
+{
+	prepare_packed_git(r);
+	return r->objects->midxed_git;
+}
+
 struct list_head *get_packed_git_mru(struct repository *r)
 {
 	prepare_packed_git(r);

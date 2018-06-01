@@ -39,6 +39,7 @@ extern void install_packed_git(struct repository *r, struct packed_git *pack);
 
 struct packed_git *get_packed_git(struct repository *r);
 struct list_head *get_packed_git_mru(struct repository *r);
+struct midxed_git *get_midxed_git(struct repository *r);
 
 /*
  * Give a rough count of objects in the repository. This sacrifices accuracy
