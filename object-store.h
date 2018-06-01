@@ -133,6 +133,13 @@ struct raw_object_store {
 	/*
 	 * private data
 	 *
+	 * should only be accessed directly by packfile.c and midx.c
+	 */
+	struct midxed_git *midxed_git;
+
+	/*
+	 * private data
+	 *
 	 * should only be accessed directly by packfile.c
 	 */
 

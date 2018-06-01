@@ -175,6 +175,28 @@ cleanup_fail:
 	exit(1);
 }
 
+int prepare_midxed_git_one(struct repository *r, const char *object_dir)
+{
+	struct midxed_git *m = r->objects->midxed_git;
+	struct midxed_git *m_search;
+
+	if (!core_midx)
+		return 0;
+
+	for (m_search = m; m_search; m_search = m_search->next)
+		if (!strcmp(object_dir, m_search->object_dir))
+			return 1;
+
+	r->objects->midxed_git = load_midxed_git(object_dir);
+
+	if (r->objects->midxed_git) {
+		r->objects->midxed_git->next = m;
+		return 1;
+	}
+
+	return 0;
+}
+
 static size_t write_midx_header(struct hashfile *f,
 				unsigned char num_chunks,
 				uint32_t num_packs)
