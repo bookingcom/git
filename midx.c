@@ -14,12 +14,14 @@
 #define MIDX_HASH_LEN 20
 #define MIDX_MIN_SIZE (MIDX_HEADER_SIZE + MIDX_HASH_LEN)
 
-#define MIDX_MAX_CHUNKS 3
+#define MIDX_MAX_CHUNKS 4
 #define MIDX_CHUNK_ALIGNMENT 4
 #define MIDX_CHUNKID_PACKLOOKUP 0x504c4f4f /* "PLOO" */
 #define MIDX_CHUNKID_PACKNAMES 0x504e414d /* "PNAM" */
+#define MIDX_CHUNKID_OIDFANOUT 0x4f494446 /* "OIDF" */
 #define MIDX_CHUNKID_OIDLOOKUP 0x4f49444c /* "OIDL" */
 #define MIDX_CHUNKLOOKUP_WIDTH (sizeof(uint32_t) + sizeof(uint64_t))
+#define MIDX_CHUNK_FANOUT_SIZE (sizeof(uint32_t) * 256)
 
 static char *get_midx_filename(const char *object_dir)
 {
@@ -96,6 +98,10 @@ struct midxed_git *load_midxed_git(const char *object_dir)
 				m->chunk_pack_names = m->data + chunk_offset;
 				break;
 
+			case MIDX_CHUNKID_OIDFANOUT:
+				m->chunk_oid_fanout = (uint32_t *)(m->data + chunk_offset);
+				break;
+
 			case MIDX_CHUNKID_OIDLOOKUP:
 				m->chunk_oid_lookup = m->data + chunk_offset;
 				break;
@@ -117,8 +123,12 @@ struct midxed_git *load_midxed_git(const char *object_dir)
 		die("MIDX missing required pack lookup chunk");
 	if (!m->chunk_pack_names)
 		die("MIDX missing required pack-name chunk");
+	if (!m->chunk_oid_fanout)
+		die("MIDX missing required OID fanout chunk");
 	if (!m->chunk_oid_lookup)
 		die("MIDX missing required OID lookup chunk");
+
+	m->num_objects = ntohl(m->chunk_oid_fanout[255]);
 
 	m->pack_names = xcalloc(m->num_packs, sizeof(const char *));
 	for (i = 0; i < m->num_packs; i++) {
@@ -377,6 +387,35 @@ static size_t write_midx_pack_names(struct hashfile *f,
 	return written;
 }
 
+static size_t write_midx_oid_fanout(struct hashfile *f,
+				    struct pack_midx_entry *objects,
+				    uint32_t nr_objects)
+{
+	struct pack_midx_entry *list = objects;
+	struct pack_midx_entry *last = objects + nr_objects;
+	uint32_t count = 0;
+	uint32_t i;
+
+	/*
+	* Write the first-level table (the list is sorted,
+	* but we use a 256-entry lookup to be able to avoid
+	* having to do eight extra binary search iterations).
+	*/
+	for (i = 0; i < 256; i++) {
+		struct pack_midx_entry *next = list;
+
+		while (next < last && next->oid.hash[0] == i) {
+			count++;
+			next++;
+		}
+
+		hashwrite_be32(f, count);
+		list = next;
+	}
+
+	return MIDX_CHUNK_FANOUT_SIZE;
+}
+
 static size_t write_midx_oid_lookup(struct hashfile *f, unsigned char hash_len,
 				    struct pack_midx_entry *objects,
 				    uint32_t nr_objects)
@@ -489,7 +528,7 @@ int write_midx_file(const char *object_dir)
 	FREE_AND_NULL(midx_name);
 
 	cur_chunk = 0;
-	num_chunks = 3;
+	num_chunks = 4;
 
 	written = write_midx_header(f, num_chunks, nr_packs);
 
@@ -501,8 +540,12 @@ int write_midx_file(const char *object_dir)
 	chunk_offsets[cur_chunk] = chunk_offsets[cur_chunk - 1] + nr_packs * sizeof(uint32_t);
 
 	cur_chunk++;
-	chunk_ids[cur_chunk] = MIDX_CHUNKID_OIDLOOKUP;
+	chunk_ids[cur_chunk] = MIDX_CHUNKID_OIDFANOUT;
 	chunk_offsets[cur_chunk] = chunk_offsets[cur_chunk - 1] + pack_name_concat_len;
+
+	cur_chunk++;
+	chunk_ids[cur_chunk] = MIDX_CHUNKID_OIDLOOKUP;
+	chunk_offsets[cur_chunk] = chunk_offsets[cur_chunk - 1] + MIDX_CHUNK_FANOUT_SIZE;
 
 	cur_chunk++;
 	chunk_ids[cur_chunk] = 0;
@@ -539,6 +582,10 @@ int write_midx_file(const char *object_dir)
 
 			case MIDX_CHUNKID_PACKNAMES:
 				written += write_midx_pack_names(f, pack_names, nr_packs);
+				break;
+
+			case MIDX_CHUNKID_OIDFANOUT:
+				written += write_midx_oid_fanout(f, entries, nr_entries);
 				break;
 
 			case MIDX_CHUNKID_OIDLOOKUP:

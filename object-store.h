@@ -102,6 +102,7 @@ struct midxed_git {
 
 	const uint32_t *chunk_pack_lookup;
 	const unsigned char *chunk_pack_names;
+	const uint32_t *chunk_oid_fanout;
 	const unsigned char *chunk_oid_lookup;
 
 	const char **pack_names;

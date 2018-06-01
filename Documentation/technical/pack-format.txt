@@ -307,6 +307,11 @@ CHUNK DATA:
 	    name. This is the only chunk not guaranteed to be a multiple of four
 	    bytes in length, so should be the last chunk for alignment reasons.
 
+	OID Fanout (ID: {'O', 'I', 'D', 'F'}) (256 * 4 bytes)
+	    The ith entry, F[i], stores the number of OIDs with first
+	    byte at most i. Thus F[255] stores the total
+	    number of objects (N).
+
 	OID Lookup (ID: {'O', 'I', 'D', 'L'}) (N * H bytes)
 	    The OIDs for all objects in the MIDX are stored in lexicographic
 	    order in this chunk.
