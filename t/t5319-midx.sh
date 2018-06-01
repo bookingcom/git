@@ -6,10 +6,15 @@ test_description='multi-pack-indexes'
 midx_read_expect() {
 	NUM_PACKS=$1
 	cat >expect <<- EOF
-	header: 4d494458 1 1 1 $NUM_PACKS
-	chunks: pack_names
-	object_dir: .
+	header: 4d494458 1 1 2 $NUM_PACKS
+	chunks: pack_lookup pack_names
+	packs:
 	EOF
+	if [ $NUM_PACKS -ge 1 ]
+	then
+		ls pack/ | grep idx | sort >> expect
+	fi
+	printf "object_dir: .\n" >>expect &&
 	git midx read --object-dir=. >actual &&
 	test_cmp expect actual
 }

@@ -13,8 +13,9 @@
 #define MIDX_HASH_LEN 20
 #define MIDX_MIN_SIZE (MIDX_HEADER_SIZE + MIDX_HASH_LEN)
 
-#define MIDX_MAX_CHUNKS 1
+#define MIDX_MAX_CHUNKS 2
 #define MIDX_CHUNK_ALIGNMENT 4
+#define MIDX_CHUNKID_PACKLOOKUP 0x504c4f4f /* "PLOO" */
 #define MIDX_CHUNKID_PACKNAMES 0x504e414d /* "PNAM" */
 #define MIDX_CHUNKLOOKUP_WIDTH (sizeof(uint32_t) + sizeof(uint64_t))
 
@@ -85,6 +86,10 @@ struct midxed_git *load_midxed_git(const char *object_dir)
 		uint64_t chunk_offset = get_be64(m->data + 16 + MIDX_CHUNKLOOKUP_WIDTH * i);
 
 		switch (chunk_id) {
+			case MIDX_CHUNKID_PACKLOOKUP:
+				m->chunk_pack_lookup = (uint32_t *)(m->data + chunk_offset);
+				break;
+
 			case MIDX_CHUNKID_PACKNAMES:
 				m->chunk_pack_names = m->data + chunk_offset;
 				break;
@@ -102,8 +107,31 @@ struct midxed_git *load_midxed_git(const char *object_dir)
 		}
 	}
 
+	if (!m->chunk_pack_lookup)
+		die("MIDX missing required pack lookup chunk");
 	if (!m->chunk_pack_names)
 		die("MIDX missing required pack-name chunk");
+
+	m->pack_names = xcalloc(m->num_packs, sizeof(const char *));
+	for (i = 0; i < m->num_packs; i++) {
+		if (i) {
+			if (ntohl(m->chunk_pack_lookup[i]) <= ntohl(m->chunk_pack_lookup[i - 1])) {
+				error("MIDX pack lookup value %d before %d",
+				      ntohl(m->chunk_pack_lookup[i - 1]),
+				      ntohl(m->chunk_pack_lookup[i]));
+				goto cleanup_fail;
+			}
+		}
+
+		m->pack_names[i] = (const char *)(m->chunk_pack_names + ntohl(m->chunk_pack_lookup[i]));
+
+		if (i && strcmp(m->pack_names[i], m->pack_names[i - 1]) <= 0) {
+			error("MIDX pack names out of order: '%s' before '%s'",
+			      m->pack_names[i - 1],
+			      m->pack_names[i]);
+			goto cleanup_fail;
+		}
+	}
 
 	return m;
 
@@ -160,6 +188,20 @@ static void sort_packs_by_name(char **pack_names, uint32_t nr_packs, uint32_t *p
 		pack_names[i] = pairs[i].pack_name;
 		perm[pairs[i].pack_int_id] = i;
 	}
+}
+
+static size_t write_midx_pack_lookup(struct hashfile *f,
+				     char **pack_names,
+				     uint32_t nr_packs)
+{
+	uint32_t i, cur_len = 0;
+
+	for (i = 0; i < nr_packs; i++) {
+		hashwrite_be32(f, cur_len);
+		cur_len += strlen(pack_names[i]) + 1;
+	}
+
+	return sizeof(uint32_t) * (size_t)nr_packs;
 }
 
 static size_t write_midx_pack_names(struct hashfile *f,
@@ -275,12 +317,16 @@ int write_midx_file(const char *object_dir)
 	FREE_AND_NULL(midx_name);
 
 	cur_chunk = 0;
-	num_chunks = 1;
+	num_chunks = 2;
 
 	written = write_midx_header(f, num_chunks, nr_packs);
 
-	chunk_ids[cur_chunk] = MIDX_CHUNKID_PACKNAMES;
+	chunk_ids[cur_chunk] = MIDX_CHUNKID_PACKLOOKUP;
 	chunk_offsets[cur_chunk] = written + (num_chunks + 1) * MIDX_CHUNKLOOKUP_WIDTH;
+
+	cur_chunk++;
+	chunk_ids[cur_chunk] = MIDX_CHUNKID_PACKNAMES;
+	chunk_offsets[cur_chunk] = chunk_offsets[cur_chunk - 1] + nr_packs * sizeof(uint32_t);
 
 	cur_chunk++;
 	chunk_ids[cur_chunk] = 0;
@@ -311,6 +357,10 @@ int write_midx_file(const char *object_dir)
 			    chunk_ids[i]);
 
 		switch (chunk_ids[i]) {
+			case MIDX_CHUNKID_PACKLOOKUP:
+				written += write_midx_pack_lookup(f, pack_names, nr_packs);
+				break;
+
 			case MIDX_CHUNKID_PACKNAMES:
 				written += write_midx_pack_names(f, pack_names, nr_packs);
 				break;

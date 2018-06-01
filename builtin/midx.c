@@ -16,6 +16,7 @@ static struct opts_midx {
 
 static int read_midx_file(const char *object_dir)
 {
+	uint32_t i;
 	struct midxed_git *m = load_midxed_git(object_dir);
 
 	if (!m)
@@ -30,10 +31,16 @@ static int read_midx_file(const char *object_dir)
 
 	printf("chunks:");
 
+	if (m->chunk_pack_lookup)
+		printf(" pack_lookup");
 	if (m->chunk_pack_names)
 		printf(" pack_names");
 
 	printf("\n");
+
+	printf("packs:\n");
+	for (i = 0; i < m->num_packs; i++)
+		printf("%s\n", m->pack_names[i]);
 
 	printf("object_dir: %s\n", m->object_dir);
 

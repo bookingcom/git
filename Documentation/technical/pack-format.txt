@@ -296,6 +296,11 @@ CHUNK LOOKUP:
 
 CHUNK DATA:
 
+	Packfile Name Lookup (ID: {'P', 'L', 'O', 'O'}) (P * 4 bytes)
+	    P * 4 bytes storing the offset in the packfile name chunk for
+	    the null-terminated string containing the filename for the
+	    ith packfile.
+
 	Packfile Names (ID: {'P', 'N', 'A', 'M'})
 	    Stores the packfile names as concatenated, null-terminated strings.
 	    Packfiles must be listed in lexicographic order for fast lookups by
