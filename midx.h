@@ -17,5 +17,6 @@ int midx_contains_pack(struct midxed_git *m, const char *idx_name);
 int prepare_midxed_git_one(struct repository *r, const char *object_dir);
 
 int write_midx_file(const char *object_dir);
+void clear_midx_file(const char *object_dir);
 
 #endif
