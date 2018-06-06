@@ -122,6 +122,7 @@ static int graph_write(int argc, const char **argv)
 	struct string_list *pack_indexes = NULL;
 	struct string_list *commit_hex = NULL;
 	struct string_list lines;
+	int free_lines = 0;
 
 	static struct option builtin_commit_graph_write_options[] = {
 		OPT_STRING(0, "object-dir", &opts.obj_dir,
@@ -155,6 +156,7 @@ static int graph_write(int argc, const char **argv)
 	if (opts.stdin_packs || opts.stdin_commits) {
 		struct strbuf buf = STRBUF_INIT;
 		string_list_init(&lines, 0);
+		free_lines = 1;
 
 		while (strbuf_getline(&buf, stdin) != EOF)
 			string_list_append(&lines, strbuf_detach(&buf, NULL));
@@ -170,7 +172,8 @@ static int graph_write(int argc, const char **argv)
 			   commit_hex,
 			   opts.append);
 
-	string_list_clear(&lines, 0);
+	if (free_lines)
+		string_list_clear(&lines, 0);
 	return 0;
 }
 
