@@ -15,6 +15,7 @@
 #include "tree-walk.h"
 #include "tree.h"
 #include "object-store.h"
+#include "midx.h"
 
 char *odb_pack_name(struct strbuf *buf,
 		    const unsigned char *sha1,
@@ -745,6 +746,11 @@ static void prepare_packed_git_one(struct repository *r, char *objdir, int local
 	DIR *dir;
 	struct dirent *de;
 	struct string_list garbage = STRING_LIST_INIT_DUP;
+	struct midxed_git *m = r->objects->midxed_git;
+
+	/* look for the multi-pack-index for this object directory */
+	while (m && strcmp(m->object_dir, objdir))
+		m = m->next;
 
 	strbuf_addstr(&path, objdir);
 	strbuf_addstr(&path, "/pack");
@@ -771,6 +777,8 @@ static void prepare_packed_git_one(struct repository *r, char *objdir, int local
 		base_len = path.len;
 		if (strip_suffix_mem(path.buf, &base_len, ".idx")) {
 			/* Don't reopen a pack we already have. */
+			if (m && midx_contains_pack(m, de->d_name))
+				continue;
 			for (p = r->objects->packed_git; p;
 			     p = p->next) {
 				size_t len;
@@ -893,10 +901,13 @@ static void prepare_packed_git(struct repository *r)
 
 	if (r->objects->packed_git_initialized)
 		return;
+	prepare_midxed_git_one(r, r->objects->objectdir);
 	prepare_packed_git_one(r, r->objects->objectdir, 1);
 	prepare_alt_odb(r);
-	for (alt = r->objects->alt_odb_list; alt; alt = alt->next)
+	for (alt = r->objects->alt_odb_list; alt; alt = alt->next) {
+		prepare_midxed_git_one(r, alt->path);
 		prepare_packed_git_one(r, alt->path, 0);
+	}
 	rearrange_packed_git(r);
 	prepare_packed_git_mru(r);
 	r->objects->packed_git_initialized = 1;
@@ -913,6 +924,12 @@ struct packed_git *get_packed_git(struct repository *r)
 {
 	prepare_packed_git(r);
 	return r->objects->packed_git;
+}
+
+struct midxed_git *get_midxed_git(struct repository *r)
+{
+	prepare_packed_git(r);
+	return r->objects->midxed_git;
 }
 
 struct list_head *get_packed_git_mru(struct repository *r)
@@ -1853,10 +1870,16 @@ static int fill_pack_entry(const struct object_id *oid,
 int find_pack_entry(struct repository *r, const struct object_id *oid, struct pack_entry *e)
 {
 	struct list_head *pos;
+	struct midxed_git *m;
 
 	prepare_packed_git(r);
-	if (!r->objects->packed_git)
+	if (!r->objects->packed_git && !r->objects->midxed_git)
 		return 0;
+
+	for (m = r->objects->midxed_git; m; m = m->next) {
+		if (fill_midx_entry(oid, e, m))
+			return 1;
+	}
 
 	list_for_each(pos, &r->objects->packed_git_mru) {
 		struct packed_git *p = list_entry(pos, struct packed_git, mru);

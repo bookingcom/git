@@ -2,6 +2,7 @@
 #define COMMIT_GRAPH_H
 
 #include "git-compat-util.h"
+#include "string-list.h"
 
 char *get_commit_graph_filename(const char *obj_dir);
 
@@ -16,6 +17,14 @@ char *get_commit_graph_filename(const char *obj_dir);
  * See parse_commit_buffer() for the fallback after this call.
  */
 int parse_commit_in_graph(struct commit *item);
+
+/*
+ * It is possible that we loaded commit contents from the commit buffer,
+ * but we also want to ensure the commit-graph content is correctly
+ * checked and filled. Fill the graph_pos and generation members of
+ * the given commit.
+ */
+void load_commit_graph_info(struct commit *item);
 
 struct tree *get_commit_tree_in_graph(const struct commit *c);
 
@@ -38,11 +47,12 @@ struct commit_graph {
 
 struct commit_graph *load_commit_graph_one(const char *graph_file);
 
+void write_commit_graph_reachable(const char *obj_dir, int append);
 void write_commit_graph(const char *obj_dir,
-			const char **pack_indexes,
-			int nr_packs,
-			const char **commit_hex,
-			int nr_commits,
+			struct string_list *pack_indexes,
+			struct string_list *commit_hex,
 			int append);
+
+int verify_commit_graph(struct commit_graph *g);
 
 #endif

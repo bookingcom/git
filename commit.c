@@ -207,6 +207,9 @@ static void prepare_commit_graft(void)
 
 	if (commit_graft_prepared)
 		return;
+	if (!startup_info->have_repository)
+		return;
+
 	graft_file = get_graft_file();
 	read_graft_file(graft_file);
 	/* make sure shallows are read */
@@ -341,7 +344,7 @@ const void *detach_commit_buffer(struct commit *commit, unsigned long *sizep)
 	return ret;
 }
 
-int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long size)
+int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long size, int check_graph)
 {
 	const char *tail = buffer;
 	const char *bufptr = buffer;
@@ -396,10 +399,13 @@ int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long s
 	}
 	item->date = parse_commit_date(bufptr, tail);
 
+	if (check_graph)
+		load_commit_graph_info(item);
+
 	return 0;
 }
 
-int parse_commit_gently(struct commit *item, int quiet_on_missing)
+int parse_commit_internal(struct commit *item, int quiet_on_missing, int use_commit_graph)
 {
 	enum object_type type;
 	void *buffer;
@@ -410,7 +416,7 @@ int parse_commit_gently(struct commit *item, int quiet_on_missing)
 		return -1;
 	if (item->object.parsed)
 		return 0;
-	if (parse_commit_in_graph(item))
+	if (use_commit_graph && parse_commit_in_graph(item))
 		return 0;
 	buffer = read_object_file(&item->object.oid, &type, &size);
 	if (!buffer)
@@ -422,13 +428,18 @@ int parse_commit_gently(struct commit *item, int quiet_on_missing)
 		return error("Object %s not a commit",
 			     oid_to_hex(&item->object.oid));
 	}
-	ret = parse_commit_buffer(item, buffer, size);
+	ret = parse_commit_buffer(item, buffer, size, 0);
 	if (save_commit_buffer && !ret) {
 		set_commit_buffer(item, buffer, size);
 		return 0;
 	}
 	free(buffer);
 	return ret;
+}
+
+int parse_commit_gently(struct commit *item, int quiet_on_missing)
+{
+	return parse_commit_internal(item, quiet_on_missing, 1);
 }
 
 void parse_commit_or_die(struct commit *item)
@@ -650,6 +661,24 @@ static int compare_commits_by_author_date(const void *a_, const void *b_,
 	return 0;
 }
 
+int compare_commits_by_gen_then_commit_date(const void *a_, const void *b_, void *unused)
+{
+	const struct commit *a = a_, *b = b_;
+
+	/* newer commits first */
+	if (a->generation < b->generation)
+		return 1;
+	else if (a->generation > b->generation)
+		return -1;
+
+	/* use date as a heuristic when generations are equal */
+	if (a->date < b->date)
+		return 1;
+	else if (a->date > b->date)
+		return -1;
+	return 0;
+}
+
 int compare_commits_by_commit_date(const void *a_, const void *b_, void *unused)
 {
 	const struct commit *a = a_, *b = b_;
@@ -797,11 +826,14 @@ static int queue_has_nonstale(struct prio_queue *queue)
 }
 
 /* all input commits in one and twos[] must have been parsed! */
-static struct commit_list *paint_down_to_common(struct commit *one, int n, struct commit **twos)
+static struct commit_list *paint_down_to_common(struct commit *one, int n,
+						struct commit **twos,
+						int min_generation)
 {
-	struct prio_queue queue = { compare_commits_by_commit_date };
+	struct prio_queue queue = { compare_commits_by_gen_then_commit_date };
 	struct commit_list *result = NULL;
 	int i;
+	uint32_t last_gen = GENERATION_NUMBER_INFINITY;
 
 	one->object.flags |= PARENT1;
 	if (!n) {
@@ -819,6 +851,15 @@ static struct commit_list *paint_down_to_common(struct commit *one, int n, struc
 		struct commit *commit = prio_queue_get(&queue);
 		struct commit_list *parents;
 		int flags;
+
+		if (commit->generation > last_gen)
+			BUG("bad generation skip %8x > %8x at %s",
+			    commit->generation, last_gen,
+			    oid_to_hex(&commit->object.oid));
+		last_gen = commit->generation;
+
+		if (commit->generation < min_generation)
+			break;
 
 		flags = commit->object.flags & (PARENT1 | PARENT2 | STALE);
 		if (flags == (PARENT1 | PARENT2)) {
@@ -868,7 +909,7 @@ static struct commit_list *merge_bases_many(struct commit *one, int n, struct co
 			return NULL;
 	}
 
-	list = paint_down_to_common(one, n, twos);
+	list = paint_down_to_common(one, n, twos, 0);
 
 	while (list) {
 		struct commit *commit = pop_commit(&list);
@@ -926,6 +967,7 @@ static int remove_redundant(struct commit **array, int cnt)
 		parse_commit(array[i]);
 	for (i = 0; i < cnt; i++) {
 		struct commit_list *common;
+		uint32_t min_generation = array[i]->generation;
 
 		if (redundant[i])
 			continue;
@@ -934,8 +976,12 @@ static int remove_redundant(struct commit **array, int cnt)
 				continue;
 			filled_index[filled] = j;
 			work[filled++] = array[j];
+
+			if (array[j]->generation < min_generation)
+				min_generation = array[j]->generation;
 		}
-		common = paint_down_to_common(array[i], filled, work);
+		common = paint_down_to_common(array[i], filled, work,
+					      min_generation);
 		if (array[i]->object.flags & PARENT2)
 			redundant[i] = 1;
 		for (j = 0; j < filled; j++)
@@ -1045,14 +1091,21 @@ int in_merge_bases_many(struct commit *commit, int nr_reference, struct commit *
 {
 	struct commit_list *bases;
 	int ret = 0, i;
+	uint32_t min_generation = GENERATION_NUMBER_INFINITY;
 
 	if (parse_commit(commit))
 		return ret;
-	for (i = 0; i < nr_reference; i++)
+	for (i = 0; i < nr_reference; i++) {
 		if (parse_commit(reference[i]))
 			return ret;
+		if (reference[i]->generation < min_generation)
+			min_generation = reference[i]->generation;
+	}
 
-	bases = paint_down_to_common(commit, nr_reference, reference);
+	if (commit->generation > min_generation)
+		return ret;
+
+	bases = paint_down_to_common(commit, nr_reference, reference, commit->generation);
 	if (commit->object.flags & PARENT2)
 		ret = 1;
 	clear_commit_marks(commit, all_flags);
@@ -1602,13 +1655,21 @@ out:
 	return result;
 }
 
+define_commit_slab(merge_desc_slab, struct merge_remote_desc *);
+static struct merge_desc_slab merge_desc_slab = COMMIT_SLAB_INIT(1, merge_desc_slab);
+
+struct merge_remote_desc *merge_remote_util(struct commit *commit)
+{
+	return *merge_desc_slab_at(&merge_desc_slab, commit);
+}
+
 void set_merge_remote_desc(struct commit *commit,
 			   const char *name, struct object *obj)
 {
 	struct merge_remote_desc *desc;
 	FLEX_ALLOC_STR(desc, name, name);
 	desc->obj = obj;
-	commit->util = desc;
+	*merge_desc_slab_at(&merge_desc_slab, commit) = desc;
 }
 
 struct commit *get_merge_parent(const char *name)
@@ -1620,7 +1681,7 @@ struct commit *get_merge_parent(const char *name)
 		return NULL;
 	obj = parse_object(&oid);
 	commit = (struct commit *)peel_to_type(name, 0, obj, OBJ_COMMIT);
-	if (commit && !commit->util)
+	if (commit && !merge_remote_util(commit))
 		set_merge_remote_desc(commit, name, obj);
 	return commit;
 }
