@@ -27,6 +27,7 @@
 #include "dir.h"
 #include "submodule.h"
 #include "revision.h"
+#include "commit-reach.h"
 
 struct path_hashmap_entry {
 	struct hashmap_entry e;
@@ -156,7 +157,7 @@ static struct tree *shift_tree_object(struct tree *one, struct tree *two,
 		shift_tree_by(&one->object.oid, &two->object.oid, &shifted,
 			      subtree_shift);
 	}
-	if (!oidcmp(&two->object.oid, &shifted))
+	if (oideq(&two->object.oid, &shifted))
 		return two;
 	return lookup_tree(the_repository, &shifted);
 }
@@ -179,7 +180,7 @@ static int oid_eq(const struct object_id *a, const struct object_id *b)
 {
 	if (!a && !b)
 		return 2;
-	return a && b && oidcmp(a, b) == 0;
+	return a && b && oideq(a, b);
 }
 
 enum rename_type {
@@ -2239,7 +2240,7 @@ static struct dir_rename_entry *check_dir_renamed(const char *path,
 {
 	char *temp = xstrdup(path);
 	char *end;
-	struct dir_rename_entry *entry = NULL;;
+	struct dir_rename_entry *entry = NULL;
 
 	while ((end = strrchr(temp, '/'))) {
 		*end = '\0';

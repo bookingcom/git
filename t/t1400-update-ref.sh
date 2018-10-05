@@ -346,7 +346,7 @@ test_expect_success "verifying $m's log (logged by config)" '
 
 git update-ref $m $D
 cat >.git/logs/$m <<EOF
-0000000000000000000000000000000000000000 $C $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150320 -0500
+$Z $C $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150320 -0500
 $C $A $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150350 -0500
 $A $B $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150380 -0500
 $F $Z $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150680 -0500
@@ -802,6 +802,37 @@ test_expect_success 'stdin delete symref works option no-deref' '
 	EOF
 	git update-ref --stdin <stdin &&
 	test_must_fail git rev-parse --verify -q TESTSYMREF &&
+	git rev-parse $m~1 >expect &&
+	git rev-parse $b >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin update symref works flag --no-deref' '
+	git symbolic-ref TESTSYMREFONE $b &&
+	git symbolic-ref TESTSYMREFTWO $b &&
+	cat >stdin <<-EOF &&
+	update TESTSYMREFONE $a $b
+	update TESTSYMREFTWO $a $b
+	EOF
+	git update-ref --no-deref --stdin <stdin &&
+	git rev-parse TESTSYMREFONE TESTSYMREFTWO >expect &&
+	git rev-parse $a $a >actual &&
+	test_cmp expect actual &&
+	git rev-parse $m~1 >expect &&
+	git rev-parse $b >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin delete symref works flag --no-deref' '
+	git symbolic-ref TESTSYMREFONE $b &&
+	git symbolic-ref TESTSYMREFTWO $b &&
+	cat >stdin <<-EOF &&
+	delete TESTSYMREFONE $b
+	delete TESTSYMREFTWO $b
+	EOF
+	git update-ref --no-deref --stdin <stdin &&
+	test_must_fail git rev-parse --verify -q TESTSYMREFONE &&
+	test_must_fail git rev-parse --verify -q TESTSYMREFTWO &&
 	git rev-parse $m~1 >expect &&
 	git rev-parse $b >actual &&
 	test_cmp expect actual

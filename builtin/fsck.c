@@ -740,7 +740,7 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 			struct progress *progress = NULL;
 
 			if (show_progress) {
-				for (p = get_packed_git(the_repository); p;
+				for (p = get_all_packs(the_repository); p;
 				     p = p->next) {
 					if (open_pack_index(p))
 						continue;
@@ -749,7 +749,7 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 
 				progress = start_progress(_("Checking objects"), total);
 			}
-			for (p = get_packed_git(the_repository); p;
+			for (p = get_all_packs(the_repository); p;
 			     p = p->next) {
 				/* verify gives error messages itself */
 				if (verify_pack(p, fsck_obj_buffer,
@@ -844,6 +844,24 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 			verify_argv[2] = "--object-dir";
 			verify_argv[3] = alt->path;
 			if (run_command(&commit_graph_verify))
+				errors_found |= ERROR_COMMIT_GRAPH;
+		}
+	}
+
+	if (!git_config_get_bool("core.multipackindex", &i) && i) {
+		struct child_process midx_verify = CHILD_PROCESS_INIT;
+		const char *midx_argv[] = { "multi-pack-index", "verify", NULL, NULL, NULL };
+
+		midx_verify.argv = midx_argv;
+		midx_verify.git_cmd = 1;
+		if (run_command(&midx_verify))
+			errors_found |= ERROR_COMMIT_GRAPH;
+
+		prepare_alt_odb(the_repository);
+		for (alt =  the_repository->objects->alt_odb_list; alt; alt = alt->next) {
+			midx_argv[2] = "--object-dir";
+			midx_argv[3] = alt->path;
+			if (run_command(&midx_verify))
 				errors_found |= ERROR_COMMIT_GRAPH;
 		}
 	}

@@ -82,6 +82,11 @@ struct rev_info {
 	 */
 	int rev_input_given;
 
+	/*
+	 * Whether we read from stdin due to the --stdin option.
+	 */
+	int read_from_stdin;
+
 	/* topo-sort */
 	enum rev_sort_order sort_order;
 
@@ -213,6 +218,17 @@ struct rev_info {
 
 	/* notes-specific options: which refs to show */
 	struct display_notes_opt notes_opt;
+
+	/* interdiff */
+	const struct object_id *idiff_oid1;
+	const struct object_id *idiff_oid2;
+	const char *idiff_title;
+
+	/* range-diff */
+	const char *rdiff1;
+	const char *rdiff2;
+	int creation_factor;
+	const char *rdiff_title;
 
 	/* commit counts */
 	int count_left;

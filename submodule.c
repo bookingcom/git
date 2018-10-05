@@ -22,6 +22,7 @@
 #include "worktree.h"
 #include "parse-options.h"
 #include "object-store.h"
+#include "commit-reach.h"
 
 static int config_update_recurse_submodules = RECURSE_SUBMODULES_OFF;
 static struct string_list changed_submodule_names = STRING_LIST_INIT_DUP;
@@ -65,8 +66,7 @@ int is_staging_gitmodules_ok(struct index_state *istate)
 	if ((pos >= 0) && (pos < istate->cache_nr)) {
 		struct stat st;
 		if (lstat(GITMODULES_FILE, &st) == 0 &&
-		    ie_match_stat(istate, istate->cache[pos], &st,
-				  CE_MATCH_IGNORE_FSMONITOR) & DATA_CHANGED)
+		    ie_match_stat(istate, istate->cache[pos], &st, 0) & DATA_CHANGED)
 			return 0;
 	}
 
@@ -536,7 +536,7 @@ static void show_submodule_header(struct diff_options *o, const char *path,
 			fast_backward = 1;
 	}
 
-	if (!oidcmp(one, two)) {
+	if (oideq(one, two)) {
 		strbuf_release(&sb);
 		return;
 	}

@@ -1244,6 +1244,10 @@ static int parse_mail(struct am_state *state, const char *mail)
 	fclose(mi.input);
 	fclose(mi.output);
 
+	if (mi.format_flowed)
+		warning(_("Patch sent with format=flowed; "
+			  "space at the end of lines might be lost."));
+
 	/* Extract message and author information */
 	fp = xfopen(am_path(state, "info"), "r");
 	while (!strbuf_getline_lf(&sb, fp)) {
@@ -2078,7 +2082,7 @@ static int safe_to_abort(const struct am_state *state)
 	if (get_oid("HEAD", &head))
 		oidclr(&head);
 
-	if (!oidcmp(&head, &abort_safety))
+	if (oideq(&head, &abort_safety))
 		return 1;
 
 	warning(_("You seem to have moved HEAD since the last 'am' failure.\n"

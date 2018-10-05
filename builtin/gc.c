@@ -183,7 +183,7 @@ static struct packed_git *find_base_packs(struct string_list *packs,
 {
 	struct packed_git *p, *base = NULL;
 
-	for (p = get_packed_git(the_repository); p; p = p->next) {
+	for (p = get_all_packs(the_repository); p; p = p->next) {
 		if (!p->pack_local)
 			continue;
 		if (limit) {
@@ -208,7 +208,7 @@ static int too_many_packs(void)
 	if (gc_auto_pack_limit <= 0)
 		return 0;
 
-	for (cnt = 0, p = get_packed_git(the_repository); p; p = p->next) {
+	for (cnt = 0, p = get_all_packs(the_repository); p; p = p->next) {
 		if (!p->pack_local)
 			continue;
 		if (p->pack_keep)
@@ -646,7 +646,8 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 		clean_pack_garbage();
 
 	if (gc_write_commit_graph)
-		write_commit_graph_reachable(get_object_directory(), 0);
+		write_commit_graph_reachable(get_object_directory(), 0,
+					     !quiet && !daemonized);
 
 	if (auto_gc && too_many_loose_objects())
 		warning(_("There are too many unreachable loose objects; "

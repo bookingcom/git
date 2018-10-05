@@ -27,6 +27,7 @@
 #include "packfile.h"
 #include "object-store.h"
 #include "protocol.h"
+#include "commit-reach.h"
 
 static const char * const receive_pack_usage[] = {
 	N_("git receive-pack <git-dir>"),
@@ -465,7 +466,7 @@ static char *prepare_push_cert_nonce(const char *path, timestamp_t stamp)
 	unsigned char sha1[GIT_SHA1_RAWSZ];
 
 	strbuf_addf(&buf, "%s:%"PRItime, path, stamp);
-	hmac_sha1(sha1, buf.buf, buf.len, cert_nonce_seed, strlen(cert_nonce_seed));;
+	hmac_sha1(sha1, buf.buf, buf.len, cert_nonce_seed, strlen(cert_nonce_seed));
 	strbuf_release(&buf);
 
 	/* RFC 2104 5. HMAC-SHA1-80 */
@@ -1222,8 +1223,8 @@ static void check_aliased_update(struct command *cmd, struct string_list *list)
 
 	dst_cmd = (struct command *) item->util;
 
-	if (!oidcmp(&cmd->old_oid, &dst_cmd->old_oid) &&
-	    !oidcmp(&cmd->new_oid, &dst_cmd->new_oid))
+	if (oideq(&cmd->old_oid, &dst_cmd->old_oid) &&
+	    oideq(&cmd->new_oid, &dst_cmd->new_oid))
 		return;
 
 	dst_cmd->skip_update = 1;

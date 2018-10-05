@@ -319,6 +319,14 @@ GIT_TEST_OE_DELTA_SIZE=<n> exercises the uncomon pack-objects code
 path where deltas larger than this limit require extra memory
 allocation for bookkeeping.
 
+GIT_TEST_VALIDATE_INDEX_CACHE_ENTRIES=<boolean> checks that cache-tree
+records are valid when the index is written out or after a merge. This
+is mostly to catch missing invalidation. Default is true.
+
+GIT_TEST_COMMIT_GRAPH=<boolean>, when true, forces the commit-graph to
+be written after every 'git commit' command, and overrides the
+'core.commitGraph' setting to true.
+
 Naming Tests
 ------------
 
@@ -805,6 +813,28 @@ library for your script to use.
    Sometimes it is possible to split a test in a part that does not need
    the symbolic link in the file system and a part that does; then only
    the latter part need be protected by a SYMLINKS prerequisite (see below).
+
+ - test_oid_init
+
+   This function loads facts and useful object IDs related to the hash
+   algorithm(s) in use from the files in t/oid-info.
+
+ - test_oid_cache
+
+   This function reads per-hash algorithm information from standard
+   input (usually a heredoc) in the format described in
+   t/oid-info/README.  This is useful for test-specific values, such as
+   object IDs, which must vary based on the hash algorithm.
+
+   Certain fixed values, such as hash sizes and common placeholder
+   object IDs, can be loaded with test_oid_init (described above).
+
+ - test_oid <key>
+
+   This function looks up a value for the hash algorithm in use, based
+   on the key given.  The value must have been loaded using
+   test_oid_init or test_oid_cache.  Providing an unknown key is an
+   error.
 
 Prerequisites
 -------------
