@@ -13,6 +13,7 @@
 #include "mergesort.h"
 #include "argv-array.h"
 #include "commit-reach.h"
+#include "advice.h"
 
 enum map_direction { FROM_SRC, FROM_DST };
 
@@ -406,7 +407,7 @@ static int handle_config(const char *key, const char *value, void *cb)
 		if (!remote->receivepack)
 			remote->receivepack = v;
 		else
-			error("more than one receivepack given, using the first");
+			error(_("more than one receivepack given, using the first"));
 	} else if (!strcmp(subkey, "uploadpack")) {
 		const char *v;
 		if (git_config_string(&v, key, value))
@@ -414,7 +415,7 @@ static int handle_config(const char *key, const char *value, void *cb)
 		if (!remote->uploadpack)
 			remote->uploadpack = v;
 		else
-			error("more than one uploadpack given, using the first");
+			error(_("more than one uploadpack given, using the first"));
 	} else if (!strcmp(subkey, "tagopt")) {
 		if (!strcmp(value, "--no-tags"))
 			remote->fetch_tags = -1;
@@ -707,7 +708,7 @@ static void query_refspecs_multiple(struct refspec *rs,
 	int find_src = !query->src;
 
 	if (find_src && !query->dst)
-		error("query_refspecs_multiple: need either src or dst");
+		error(_("query_refspecs_multiple: need either src or dst"));
 
 	for (i = 0; i < rs->nr; i++) {
 		struct refspec_item *refspec = &rs->items[i];
@@ -735,7 +736,7 @@ int query_refspecs(struct refspec *rs, struct refspec_item *query)
 	char **result = find_src ? &query->src : &query->dst;
 
 	if (find_src && !query->dst)
-		return error("query_refspecs: need either src or dst");
+		return error(_("query_refspecs: need either src or dst"));
 
 	for (i = 0; i < rs->nr; i++) {
 		struct refspec_item *refspec = &rs->items[i];
@@ -995,12 +996,12 @@ static int match_explicit_lhs(struct ref *src,
 		 * way to delete 'other' ref at the remote end.
 		 */
 		if (try_explicit_object_name(rs->src, match) < 0)
-			return error("src refspec %s does not match any.", rs->src);
+			return error(_("src refspec %s does not match any."), rs->src);
 		if (allocated_match)
 			*allocated_match = 1;
 		return 0;
 	default:
-		return error("src refspec %s matches more than one.", rs->src);
+		return error(_("src refspec %s matches more than one."), rs->src);
 	}
 }
 
@@ -1041,30 +1042,77 @@ static int match_explicit(struct ref *src, struct ref *dst,
 		if (starts_with(dst_value, "refs/"))
 			matched_dst = make_linked_ref(dst_value, dst_tail);
 		else if (is_null_oid(&matched_src->new_oid))
-			error("unable to delete '%s': remote ref does not exist",
+			error(_("unable to delete '%s': remote ref does not exist"),
 			      dst_value);
 		else if ((dst_guess = guess_ref(dst_value, matched_src))) {
 			matched_dst = make_linked_ref(dst_guess, dst_tail);
 			free(dst_guess);
-		} else
-			error("unable to push to unqualified destination: %s\n"
-			      "The destination refspec neither matches an "
-			      "existing ref on the remote nor\n"
-			      "begins with refs/, and we are unable to "
-			      "guess a prefix based on the source ref.",
-			      dst_value);
+		} else {
+			struct object_id oid;
+			enum object_type type;
+
+			error("unable to push to unqualified destination: %s", dst_value);
+			if (!advice_push_ambiguous_ref_name)
+				break;
+			if (get_oid(matched_src->name, &oid))
+				BUG("'%s' is not a valid object, "
+				    "match_explicit_lhs() should catch this!",
+				    matched_src->name);
+			type = oid_object_info(the_repository, &oid, NULL);
+			if (type == OBJ_COMMIT) {
+
+				advise(_("The destination refspec neither matches an existing\n"
+					 "ref on the remote nor begins with refs/, and we are\n"
+					 "unable to guess a prefix based on the source ref.\n"
+					 "\n"
+					 "The <src> part of the refspec is a commit object.\n"
+					 "Did you mean to create a new branch by pushing to\n"
+					 "'%s:refs/heads/%s'?"),
+				       matched_src->name, dst_value);
+			} else if (type == OBJ_TAG) {
+				advise(_("The destination refspec neither matches an existing\n"
+					 "ref on the remote nor begins with refs/, and we are\n"
+					 "unable to guess a prefix based on the source ref.\n"
+					 "\n"
+					 "The <src> part of the refspec is a tag object.\n"
+					 "Did you mean to create a new tag by pushing to\n"
+					 "'%s:refs/tags/%s'?"),
+				       matched_src->name, dst_value);
+			} else if (type == OBJ_TREE) {
+				advise(_("The destination refspec neither matches an existing\n"
+					 "ref on the remote nor begins with refs/, and we are\n"
+					 "unable to guess a prefix based on the source ref.\n"
+					 "\n"
+					 "The <src> part of the refspec is a tree object.\n"
+					 "Did you mean to tag a new tree by pushing to\n"
+					 "'%s:refs/tags/%s'?"),
+				       matched_src->name, dst_value);
+			} else if (type == OBJ_BLOB) {
+				advise(_("The destination refspec neither matches an existing\n"
+					 "ref on the remote nor begins with refs/, and we are\n"
+					 "unable to guess a prefix based on the source ref.\n"
+					 "\n"
+					 "The <src> part of the refspec is a blob object.\n"
+					 "Did you mean to tag a new blob by pushing to\n"
+					 "'%s:refs/tags/%s'?"),
+				       matched_src->name, dst_value);
+			} else {
+				BUG("'%s' should be commit/tag/tree/blob, is '%d'",
+				    matched_src->name, type);
+			}
+		}
 		break;
 	default:
 		matched_dst = NULL;
-		error("dst refspec %s matches more than one.",
+		error(_("dst refspec %s matches more than one."),
 		      dst_value);
 		break;
 	}
 	if (!matched_dst)
 		return -1;
 	if (matched_dst->peer_ref)
-		return error("dst ref %s receives from more than one src.",
-		      matched_dst->name);
+		return error(_("dst ref %s receives from more than one src."),
+			     matched_dst->name);
 	else {
 		matched_dst->peer_ref = allocated_src ?
 					matched_src :
@@ -1763,7 +1811,7 @@ int get_fetch_map(const struct ref *remote_refs,
 			if (!starts_with((*rmp)->peer_ref->name, "refs/") ||
 			    check_refname_format((*rmp)->peer_ref->name, 0)) {
 				struct ref *ignore = *rmp;
-				error("* Ignoring funny ref '%s' locally",
+				error(_("* Ignoring funny ref '%s' locally"),
 				      (*rmp)->peer_ref->name);
 				*rmp = (*rmp)->next;
 				free(ignore->peer_ref);
@@ -2131,7 +2179,7 @@ static int parse_push_cas_option(struct push_cas_option *cas, const char *arg, i
 	else if (!colon[1])
 		oidclr(&entry->expect);
 	else if (get_oid(colon + 1, &entry->expect))
-		return error("cannot parse expected object name '%s'", colon + 1);
+		return error(_("cannot parse expected object name '%s'"), colon + 1);
 	return 0;
 }
 
