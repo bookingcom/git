@@ -1222,4 +1222,29 @@ test_expect_success 'add remote matching the "insteadOf" URL' '
 	git remote add backup xyz@example.com
 '
 
+test_expect_success 'unqualified refspec DWIM and advice' '
+	test_when_finished "(cd test && git tag -d some-tag)" &&
+	(
+		cd test &&
+		git tag -a -m "Some tag" some-tag master &&
+		for type in commit tag tree blob
+		do
+			if test "$type" = "blob"
+			then
+				oid=$(git rev-parse some-tag:file)
+			else
+				oid=$(git rev-parse some-tag^{$type})
+			fi &&
+			test_must_fail git push origin $oid:dst -n 2>err &&
+			test_i18ngrep "error: unable to push" err &&
+			test_i18ngrep "hint: Did you mean" err &&
+			test_must_fail git -c advice.pushAmbigiousRefName=false \
+				push origin $oid:dst -n 2>err &&
+			test_i18ngrep "error: unable to push" err &&
+			test_i18ngrep ! "hint: Did you mean" err
+		done
+	)
+'
+
+
 test_done
