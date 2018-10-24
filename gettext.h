@@ -41,11 +41,7 @@ static inline int gettext_width(const char *s)
 }
 #endif
 
-#ifdef GETTEXT_POISON
 extern int use_gettext_poison(void);
-#else
-#define use_gettext_poison() 0
-#endif
 
 static inline FORMAT_PRESERVING(1) const char *_(const char *msgid)
 {

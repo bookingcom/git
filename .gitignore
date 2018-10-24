@@ -152,6 +152,7 @@
 /git-serve
 /git-sh-i18n
 /git-sh-i18n--envsubst
+/git-sh-i18n--helper
 /git-sh-setup
 /git-sh-i18n
 /git-shell
