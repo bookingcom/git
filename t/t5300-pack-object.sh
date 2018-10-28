@@ -481,18 +481,22 @@ test_expect_success 'setup: fake a SHA1 hash collision' '
 '
 
 test_expect_success 'make sure index-pack detects the SHA1 collision' '
+	sane_unset GIT_TEST_CHECK_COLLISIONS &&
 	(
 		cd corrupt &&
-		test_must_fail git index-pack -o ../bad.idx ../test-3.pack 2>msg &&
-		test_i18ngrep "SHA1 COLLISION FOUND" msg
+		test_must_fail git index-pack -o good.idx ../test-3.pack 2>msg &&
+		test_i18ngrep "SHA1 COLLISION FOUND" msg &&
+		git -c core.checkCollisions=false index-pack -o good.idx ../test-3.pack
 	)
 '
 
 test_expect_success 'make sure index-pack detects the SHA1 collision (large blobs)' '
+	sane_unset GIT_TEST_CHECK_COLLISIONS &&
 	(
 		cd corrupt &&
 		test_must_fail git -c core.bigfilethreshold=1 index-pack -o ../bad.idx ../test-3.pack 2>msg &&
-		test_i18ngrep "SHA1 COLLISION FOUND" msg
+		test_i18ngrep "SHA1 COLLISION FOUND" msg &&
+		git -c core.checkCollisions=false -c core.bigfilethreshold=1 index-pack -o good.idx ../test-3.pack
 	)
 '
 
