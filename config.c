@@ -1362,6 +1362,14 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 
+	if (!strcmp(var, "core.checkcollisions")) {
+		if (!strcasecmp(value, "default"))
+			check_collisions = 1;
+		else
+			check_collisions = git_config_bool(var, value);
+		return 0;
+	}
+
 	/* Add other config variables here and to Documentation/config.txt. */
 	return 0;
 }
@@ -2316,6 +2324,18 @@ int git_config_get_index_threads(void)
 	}
 
 	return 0; /* auto */
+}
+
+int git_config_get_collision_check(void)
+{
+	static int checked_env = 0;
+	if (!checked_env) {
+		checked_env = 1;
+		int v = git_env_bool("GIT_TEST_CHECK_COLLISIONS", -1);
+		if (v != -1)
+			check_collisions = v;
+	}
+	return check_collisions;
 }
 
 NORETURN

@@ -350,6 +350,9 @@ of the index for the whole test suite by bypassing the default number of
 cache entries and thread minimums. Setting this to 1 will make the
 index loading single threaded.
 
+GIT_TEST_CHECK_COLLISIONS=<boolean> excercises the
+core.checkCollisions=false codepath.
+
 Naming Tests
 ------------
 
