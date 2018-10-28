@@ -579,6 +579,34 @@ int git_config_get_untracked_cache(void);
 int git_config_get_split_index(void);
 int git_config_get_max_percent_split_change(void);
 int git_config_get_fsmonitor(void);
+extern int repo_config_get_ulong(struct repository *repo,
+				 const char *key, unsigned long *dest);
+extern int repo_config_get_bool(struct repository *repo,
+				const char *key, int *dest);
+extern int repo_config_get_bool_or_int(struct repository *repo,
+				       const char *key, int *is_bool, int *dest);
+extern int repo_config_get_maybe_bool(struct repository *repo,
+				      const char *key, int *dest);
+extern int repo_config_get_pathname(struct repository *repo,
+				    const char *key, const char **dest);
+
+extern int git_config_get_value(const char *key, const char **value);
+extern const struct string_list *git_config_get_value_multi(const char *key);
+extern void git_config_clear(void);
+extern int git_config_get_string_const(const char *key, const char **dest);
+extern int git_config_get_string(const char *key, char **dest);
+extern int git_config_get_int(const char *key, int *dest);
+extern int git_config_get_ulong(const char *key, unsigned long *dest);
+extern int git_config_get_bool(const char *key, int *dest);
+extern int git_config_get_bool_or_int(const char *key, int *is_bool, int *dest);
+extern int git_config_get_maybe_bool(const char *key, int *dest);
+extern int git_config_get_pathname(const char *key, const char **dest);
+extern int git_config_get_index_threads(int *dest);
+extern int git_config_get_untracked_cache(void);
+extern int git_config_get_split_index(void);
+extern int git_config_get_max_percent_split_change(void);
+extern int git_config_get_fsmonitor(void);
+extern int git_config_get_collision_check(void);
 
 /* This dies if the configured or default date is in the future */
 int git_config_get_expiry(const char *key, const char **output);
