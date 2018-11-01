@@ -1222,4 +1222,61 @@ test_expect_success 'add remote matching the "insteadOf" URL' '
 	git remote add backup xyz@example.com
 '
 
+test_expect_success 'unqualified <dst> refspec DWIM and advice' '
+	test_when_finished "(cd test && git tag -d some-tag)" &&
+	(
+		cd test &&
+		git tag -a -m "Some tag" some-tag master &&
+		for type in commit tag tree blob
+		do
+			if test "$type" = "blob"
+			then
+				oid=$(git rev-parse some-tag:file)
+			else
+				oid=$(git rev-parse some-tag^{$type})
+			fi &&
+			test_must_fail git push origin $oid:dst 2>err &&
+			test_i18ngrep "error: The destination you" err &&
+			test_i18ngrep "hint: Did you mean" err &&
+			test_must_fail git -c advice.pushUnqualifiedRefName=false \
+				push origin $oid:dst 2>err &&
+			test_i18ngrep "error: The destination you" err &&
+			test_i18ngrep ! "hint: Did you mean" err
+		done
+	)
+'
+
+test_expect_success 'refs/remotes/* <src> refspec and unqualified <dst> DWIM and advice' '
+	(
+		cd two &&
+		git tag -a -m "Some tag" some-tag master &&
+		git update-ref refs/trees/my-head-tree HEAD^{tree} &&
+		git update-ref refs/blobs/my-file-blob HEAD:file
+	) &&
+	(
+		cd test &&
+		git config --add remote.two.fetch "+refs/tags/*:refs/remotes/two-tags/*" &&
+		git config --add remote.two.fetch "+refs/trees/*:refs/remotes/two-trees/*" &&
+		git config --add remote.two.fetch "+refs/blobs/*:refs/remotes/two-blobs/*" &&
+		git fetch --no-tags two &&
+
+		echo commit >expected &&
+		git push origin refs/remotes/two/another:dst &&
+		git -C ../one cat-file -t refs/heads/dst >actual &&
+		test_cmp expected actual &&
+
+		echo tag >expected &&
+		git push origin refs/remotes/two-tags/some-tag:dst-tag &&
+		git -C ../one cat-file -t refs/tags/dst-tag >actual &&
+		test_cmp expected actual &&
+
+		test_must_fail git push origin refs/remotes/two-trees/my-head-tree:dst-tree 2>err &&
+		test_i18ngrep "error: The destination you" err &&
+
+		test_must_fail git push origin refs/remotes/two-blobs/my-file-blob:dst-blob 2>err &&
+		test_i18ngrep "error: The destination you" err
+	)
+'
+
+
 test_done

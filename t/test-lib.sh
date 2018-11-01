@@ -1105,12 +1105,8 @@ test -n "$USE_LIBPCRE2" && test_set_prereq LIBPCRE2
 test -z "$NO_GETTEXT" && test_set_prereq GETTEXT
 
 # Can we rely on git's output in the C locale?
-if test -n "$GETTEXT_POISON"
+if test -z "$GIT_TEST_GETTEXT_POISON"
 then
-	GIT_GETTEXT_POISON=YesPlease
-	export GIT_GETTEXT_POISON
-	test_set_prereq GETTEXT_POISON
-else
 	test_set_prereq C_LOCALE_OUTPUT
 fi
 
