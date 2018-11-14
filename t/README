@@ -302,6 +302,12 @@ that cannot be easily covered by a few specific test cases. These
 could be enabled by running the test suite with correct GIT_TEST_
 environment set.
 
+GIT_TEST_GETTEXT_POISON=<non-empty?> turns all strings marked for
+translation into gibberish if non-empty (think "test -n"). Used for
+spotting those tests that need to be marked with a C_LOCALE_OUTPUT
+prerequisite when adding more strings for translation. See "Testing
+marked strings" in po/README for details.
+
 GIT_TEST_SPLIT_INDEX=<boolean> forces split-index mode on the whole
 test suite. Accept any boolean values that are accepted by git-config.
 
@@ -339,6 +345,10 @@ for the index version specified.  Can be set to any valid version
 GIT_TEST_PRELOAD_INDEX=<boolean> exercises the preload-index code path
 by overriding the minimum number of cache entries required per thread.
 
+GIT_TEST_REBASE_USE_BUILTIN=<boolean>, when false, disables the
+builtin version of git-rebase. See 'rebase.useBuiltin' in
+git-config(1).
+
 GIT_TEST_INDEX_THREADS=<n> enables exercising the multi-threaded loading
 of the index for the whole test suite by bypassing the default number of
 cache entries and thread minimums. Setting this to 1 will make the
@@ -347,6 +357,9 @@ index loading single threaded.
 GIT_TEST_MULTI_PACK_INDEX=<boolean>, when true, forces the multi-pack-
 index to be written after every 'git repack' command, and overrides the
 'core.multiPackIndex' setting to true.
+
+GIT_TEST_CHECK_COLLISIONS=<boolean> excercises the
+core.checkCollisions=false codepath.
 
 Naming Tests
 ------------
