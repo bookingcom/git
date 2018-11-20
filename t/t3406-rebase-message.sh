@@ -84,7 +84,8 @@ test_expect_success 'rebase --onto outputs the invalid ref' '
 	test_i18ngrep "invalid-ref" err
 '
 
-test_expect_success 'error out early upon -C<n> or --whitespace=<bad>' '
+test_expect_success 'builtin rebase: error out early upon -C<n> or --whitespace=<bad>' '
+	sane_unset GIT_TEST_REBASE_USE_BUILTIN &&
 	test_must_fail git rebase -Cnot-a-number HEAD 2>err &&
 	test_i18ngrep "numerical value" err &&
 	test_must_fail git rebase --whitespace=bad HEAD 2>err &&
