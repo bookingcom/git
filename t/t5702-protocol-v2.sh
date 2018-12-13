@@ -8,6 +8,7 @@ TEST_NO_CREATE_REPO=1
 
 # Test protocol v2 with 'git://' transport
 #
+unset GIT_TEST_PROTOCOL_VERSION
 . "$TEST_DIRECTORY"/lib-git-daemon.sh
 start_git_daemon --export-all --enable=receive-pack
 daemon_parent=$GIT_DAEMON_DOCUMENT_ROOT_PATH/parent

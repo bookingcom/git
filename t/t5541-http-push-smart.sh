@@ -45,14 +45,19 @@ test_expect_success 'no empty path components' '
 	# In the URL, add a trailing slash, and see if git appends yet another
 	# slash.
 	cd "$ROOT_PATH" &&
-	git clone $HTTPD_URL/smart/test_repo.git/ test_repo_clone &&
+	# Other protocol versions may make different requests, so perform this
+	# clone with the default protocol.
+	GIT_TEST_PROTOCOL_VERSION= git clone $HTTPD_URL/smart/test_repo.git/ test_repo_clone &&
 
 	check_access_log exp
 '
 
 test_expect_success 'clone remote repository' '
 	rm -rf test_repo_clone &&
-	git clone $HTTPD_URL/smart/test_repo.git test_repo_clone &&
+	# Other protocol versions may make different requests, so perform this
+	# clone with the default protocol.
+	GIT_TEST_PROTOCOL_VERSION= git clone $HTTPD_URL/smart/test_repo.git test_repo_clone &&
+
 	(
 		cd test_repo_clone && git config push.default matching
 	)

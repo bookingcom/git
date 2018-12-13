@@ -325,7 +325,7 @@ copy_ssh_wrapper_as () {
 
 expect_ssh () {
 	test_when_finished '
-		(cd "$TRASH_DIRECTORY" && rm -f ssh-expect && >ssh-output)
+		(cd "$TRASH_DIRECTORY" && rm -f ssh-expect ssh-output.munged && >ssh-output)
 	' &&
 	{
 		case "$#" in
@@ -341,7 +341,14 @@ expect_ssh () {
 			echo "ssh: $1 $2 git-upload-pack '$3' $4"
 		esac
 	} >"$TRASH_DIRECTORY/ssh-expect" &&
-	(cd "$TRASH_DIRECTORY" && test_cmp ssh-expect ssh-output)
+	(
+		cd "$TRASH_DIRECTORY" &&
+		# We don't care about this trivial difference in
+		# output with GIT_TEST_PROTOCOL_VERSION=[12]
+		sed 's/ssh: -o SendEnv=GIT_PROTOCOL /ssh: /' <ssh-output >ssh-output.munged &&
+		mv ssh-output.munged ssh-output &&
+		test_cmp ssh-expect ssh-output
+	)
 }
 
 test_expect_success 'clone myhost:src uses ssh' '

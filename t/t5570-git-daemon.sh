@@ -190,7 +190,7 @@ test_expect_success 'daemon log records all attributes' '
 	EOF
 	>daemon.log &&
 	GIT_OVERRIDE_VIRTUAL_HOST=localhost \
-		git -c protocol.version=1 \
+		GIT_TEST_PROTOCOL_VERSION= git -c protocol.version=1 \
 			ls-remote "$GIT_DAEMON_URL/interp.git" &&
 	grep -i extended.attribute daemon.log | cut -d" " -f2- >actual &&
 	test_cmp expect actual
