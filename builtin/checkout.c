@@ -753,7 +753,8 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 			free(refname);
 		}
 		else
-			create_branch(opts->new_branch, new_branch_info->name,
+			create_branch(the_repository,
+				      opts->new_branch, new_branch_info->name,
 				      opts->new_branch_force ? 1 : 0,
 				      opts->new_branch_force ? 1 : 0,
 				      opts->new_branch_log,
@@ -811,7 +812,7 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 				delete_reflog(old_branch_info->path);
 		}
 	}
-	remove_branch_state();
+	remove_branch_state(the_repository);
 	strbuf_release(&msg);
 	if (!opts->quiet &&
 	    (new_branch_info->path || (!opts->force_detach && !strcmp(new_branch_info->name, "HEAD"))))
@@ -1079,9 +1080,12 @@ static int parse_branchname_arg(int argc, const char **argv,
 		 */
 		int recover_with_dwim = dwim_new_local_branch_ok;
 
-		if (!has_dash_dash &&
-		    (check_filename(opts->prefix, arg) || !no_wildcard(arg)))
+		int could_be_checkout_paths = !has_dash_dash &&
+			check_filename(opts->prefix, arg);
+
+		if (!has_dash_dash && !no_wildcard(arg))
 			recover_with_dwim = 0;
+
 		/*
 		 * Accept "git checkout foo" and "git checkout foo --"
 		 * as candidates for dwim.
@@ -1094,6 +1098,10 @@ static int parse_branchname_arg(int argc, const char **argv,
 			const char *remote = unique_tracking_name(arg, rev,
 								  dwim_remotes_matched);
 			if (remote) {
+				if (could_be_checkout_paths)
+					die(_("'%s' could be both a local file and a tracking branch.\n"
+					      "Please use -- (and optionally --no-guess) to disambiguate"),
+					    arg);
 				*new_branch = arg;
 				arg = remote;
 				/* DWIMmed to create local branch, case (3).(b) */
@@ -1228,7 +1236,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	struct checkout_opts opts;
 	struct branch_info new_branch_info;
 	char *conflict_style = NULL;
-	int dwim_new_local_branch = 1;
+	int dwim_new_local_branch, no_dwim_new_local_branch = 0;
 	int dwim_remotes_matched = 0;
 	struct option options[] = {
 		OPT__QUIET(&opts.quiet, N_("suppress progress reporting")),
@@ -1258,8 +1266,8 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		OPT_BOOL('p', "patch", &opts.patch_mode, N_("select hunks interactively")),
 		OPT_BOOL(0, "ignore-skip-worktree-bits", &opts.ignore_skipworktree,
 			 N_("do not limit pathspecs to sparse entries only")),
-		OPT_HIDDEN_BOOL(0, "guess", &dwim_new_local_branch,
-				N_("second guess 'git checkout <no-such-branch>'")),
+		OPT_BOOL(0, "no-guess", &no_dwim_new_local_branch,
+			 N_("do not second guess 'git checkout <no-such-branch>'")),
 		OPT_BOOL(0, "ignore-other-worktrees", &opts.ignore_other_worktrees,
 			 N_("do not check if another worktree is holding the given ref")),
 		{ OPTION_CALLBACK, 0, "recurse-submodules", NULL,
@@ -1282,6 +1290,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, options, checkout_usage,
 			     PARSE_OPT_KEEP_DASHDASH);
 
+	dwim_new_local_branch = !no_dwim_new_local_branch;
 	if (opts.show_progress < 0) {
 		if (opts.quiet)
 			opts.show_progress = 0;

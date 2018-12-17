@@ -67,6 +67,9 @@ OPTIONS
 	abbreviated object name, use <n> digits, or as many digits
 	as needed to form a unique object name.  An <n> of 0
 	will suppress long format, only showing the closest tag.
++
+Can also be set to a relative value, see `core.abbrev` in
+linkgit:git-diff[1].
 
 --candidates=<n>::
 	Instead of considering only the 10 most recent tags as

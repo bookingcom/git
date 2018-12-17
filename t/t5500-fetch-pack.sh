@@ -628,7 +628,10 @@ test_expect_success 'fetch-pack cannot fetch a raw sha1 that is not advertised a
 	test_commit -C server 6 &&
 
 	git init client &&
-	test_must_fail git -C client fetch-pack ../server \
+
+	# Other protocol versions (e.g. 2) allow fetching an unadvertised
+	# object, so run this test with the default protocol version (0).
+	test_must_fail env GIT_TEST_PROTOCOL_VERSION= git -C client fetch-pack ../server \
 		$(git -C server rev-parse refs/heads/master^) 2>err &&
 	test_i18ngrep "Server does not allow request for unadvertised object" err
 '
@@ -788,7 +791,7 @@ test_expect_success 'shallow clone exclude tag two' '
 '
 
 test_expect_success 'fetch exclude tag one' '
-	git -C shallow12 fetch --shallow-exclude one origin &&
+	GIT_TEST_PROTOCOL_VERSION= git -C shallow12 fetch --shallow-exclude one origin &&
 	git -C shallow12 log --pretty=tformat:%s origin/master >actual &&
 	test_write_lines three two >expected &&
 	test_cmp expected actual
@@ -806,7 +809,7 @@ test_expect_success 'fetching deepen' '
 	git -C deepen log --pretty=tformat:%s master >actual &&
 	echo three >expected &&
 	test_cmp expected actual &&
-	git -C deepen fetch --deepen=1 &&
+	GIT_TEST_PROTOCOL_VERSION= git -C deepen fetch --deepen=1 &&
 	git -C deepen log --pretty=tformat:%s origin/master >actual &&
 	cat >expected <<-\EOF &&
 	four

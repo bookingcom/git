@@ -971,16 +971,16 @@ static void prepare_packed_git_mru(struct repository *r)
 
 static void prepare_packed_git(struct repository *r)
 {
-	struct alternate_object_database *alt;
+	struct object_directory *odb;
 
 	if (r->objects->packed_git_initialized)
 		return;
-	prepare_multi_pack_index_one(r, r->objects->objectdir, 1);
-	prepare_packed_git_one(r, r->objects->objectdir, 1);
+
 	prepare_alt_odb(r);
-	for (alt = r->objects->alt_odb_list; alt; alt = alt->next) {
-		prepare_multi_pack_index_one(r, alt->path, 0);
-		prepare_packed_git_one(r, alt->path, 0);
+	for (odb = r->objects->odb; odb; odb = odb->next) {
+		int local = (odb == r->objects->odb);
+		prepare_multi_pack_index_one(r, odb->path, local);
+		prepare_packed_git_one(r, odb->path, local);
 	}
 	rearrange_packed_git(r);
 
@@ -992,6 +992,14 @@ static void prepare_packed_git(struct repository *r)
 
 void reprepare_packed_git(struct repository *r)
 {
+	struct object_directory *odb;
+
+	for (odb = r->objects->odb; odb; odb = odb->next) {
+		oid_array_clear(&odb->loose_objects_cache);
+		memset(&odb->loose_objects_subdir_seen, 0,
+		       sizeof(odb->loose_objects_subdir_seen));
+	}
+
 	r->objects->approximate_object_count_valid = 0;
 	r->objects->packed_git_initialized = 0;
 	prepare_packed_git(r);
@@ -1143,12 +1151,13 @@ void mark_bad_packed_object(struct packed_git *p, const unsigned char *sha1)
 	p->num_bad_objects++;
 }
 
-const struct packed_git *has_packed_and_bad(const unsigned char *sha1)
+const struct packed_git *has_packed_and_bad(struct repository *r,
+					    const unsigned char *sha1)
 {
 	struct packed_git *p;
 	unsigned i;
 
-	for (p = the_repository->objects->packed_git; p; p = p->next)
+	for (p = r->objects->packed_git; p; p = p->next)
 		for (i = 0; i < p->num_bad_objects; i++)
 			if (hasheq(sha1,
 				   p->bad_object_sha1 + the_hash_algo->rawsz * i))

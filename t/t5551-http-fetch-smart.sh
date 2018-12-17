@@ -43,7 +43,8 @@ test_expect_success 'clone http repository' '
 	< Cache-Control: no-cache, max-age=0, must-revalidate
 	< Content-Type: application/x-git-upload-pack-result
 	EOF
-	GIT_TRACE_CURL=true git clone --quiet $HTTPD_URL/smart/repo.git clone 2>err &&
+	GIT_TRACE_CURL=true GIT_TEST_PROTOCOL_VERSION= \
+		git clone --quiet $HTTPD_URL/smart/repo.git clone 2>err &&
 	test_cmp file clone/file &&
 	tr '\''\015'\'' Q <err |
 	sed -e "
@@ -92,7 +93,7 @@ test_expect_success 'fetch changes via http' '
 	echo content >>file &&
 	git commit -a -m two &&
 	git push public &&
-	(cd clone && git pull) &&
+	(cd clone && GIT_TEST_PROTOCOL_VERSION= git pull) &&
 	test_cmp file clone/file
 '
 
@@ -143,7 +144,7 @@ test_expect_success 'clone from auth-only-for-push repository' '
 test_expect_success 'clone from auth-only-for-objects repository' '
 	echo two >expect &&
 	set_askpass user@host pass@host &&
-	git clone --bare "$HTTPD_URL/auth-fetch/smart/repo.git" half-auth &&
+	GIT_TEST_PROTOCOL_VERSION= git clone --bare "$HTTPD_URL/auth-fetch/smart/repo.git" half-auth &&
 	expect_askpass both user@host &&
 	git --git-dir=half-auth log -1 --format=%s >actual &&
 	test_cmp expect actual
@@ -151,7 +152,7 @@ test_expect_success 'clone from auth-only-for-objects repository' '
 
 test_expect_success 'no-op half-auth fetch does not require a password' '
 	set_askpass wrong &&
-	git --git-dir=half-auth fetch &&
+	GIT_TEST_PROTOCOL_VERSION= git --git-dir=half-auth fetch &&
 	expect_askpass none
 '
 
@@ -187,7 +188,7 @@ test_expect_success 'create namespaced refs' '
 '
 
 test_expect_success 'smart clone respects namespace' '
-	git clone "$HTTPD_URL/smart_namespace/repo.git" ns-smart &&
+	GIT_TEST_PROTOCOL_VERSION= git clone "$HTTPD_URL/smart_namespace/repo.git" ns-smart &&
 	echo namespaced >expect &&
 	git --git-dir=ns-smart/.git log -1 --format=%s >actual &&
 	test_cmp expect actual
@@ -214,7 +215,7 @@ test_expect_success 'cookies stored in http.cookiefile when http.savecookies set
 	EOF
 	git config http.cookiefile cookies.txt &&
 	git config http.savecookies true &&
-	git ls-remote $HTTPD_URL/smart_cookies/repo.git master &&
+	GIT_TEST_PROTOCOL_VERSION= git ls-remote $HTTPD_URL/smart_cookies/repo.git master &&
 	tail -3 cookies.txt | sort >cookies_tail.txt &&
 	test_cmp expect_cookies.txt cookies_tail.txt
 '
@@ -306,7 +307,8 @@ test_expect_success 'test allowreachablesha1inwant with unreachable' '
 
 	git init --bare test_reachable.git &&
 	git -C test_reachable.git remote add origin "$HTTPD_URL/smart/repo.git" &&
-	test_must_fail git -C test_reachable.git fetch origin "$(git rev-parse HEAD)"
+	test_must_fail env GIT_TEST_PROTOCOL_VERSION= \
+		git -C test_reachable.git fetch origin "$(git rev-parse HEAD)"
 '
 
 test_expect_success 'test allowanysha1inwant with unreachable' '
@@ -325,7 +327,8 @@ test_expect_success 'test allowanysha1inwant with unreachable' '
 
 	git init --bare test_reachable.git &&
 	git -C test_reachable.git remote add origin "$HTTPD_URL/smart/repo.git" &&
-	test_must_fail git -C test_reachable.git fetch origin "$(git rev-parse HEAD)" &&
+	test_must_fail env GIT_TEST_PROTOCOL_VERSION= \
+		git -C test_reachable.git fetch origin "$(git rev-parse HEAD)" &&
 
 	git -C "$server" config uploadpack.allowanysha1inwant 1 &&
 	git -C test_reachable.git fetch origin "$(git rev-parse HEAD)"

@@ -846,6 +846,8 @@ extern int check_stat;
 extern int quote_path_fully;
 extern int has_symlinks;
 extern int minimum_abbrev, default_abbrev;
+extern int default_abbrev_relative;
+extern int validate_abbrev;
 extern int ignore_case;
 extern int assume_unchanged;
 extern int prefer_symlink_refs;
@@ -1035,6 +1037,8 @@ static inline int hashcmp(const unsigned char *sha1, const unsigned char *sha2)
 	 *
 	 * This will need to be extended or ripped out when we learn about
 	 * hashes of different sizes.
+	 *
+	 * When ripping this out, see TODO in test-repository.c.
 	 */
 	if (the_hash_algo->rawsz != 20)
 		BUG("hash size not yet supported by hashcmp");

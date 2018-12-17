@@ -147,7 +147,7 @@ do
 			do
 				git update-ref -d "$refname" "$val"
 			done
-			git fetch "$@" >/dev/null
+			GIT_TEST_PROTOCOL_VERSION= git fetch "$@" >/dev/null
 			cat .git/FETCH_HEAD
 		} >"$actual_f" &&
 		git show-ref >"$actual_r" &&

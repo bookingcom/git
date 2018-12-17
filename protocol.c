@@ -17,7 +17,18 @@ static enum protocol_version parse_protocol_version(const char *value)
 enum protocol_version get_protocol_version_config(void)
 {
 	const char *value;
-	if (!git_config_get_string_const("protocol.version", &value)) {
+	const char *git_test_k = "GIT_TEST_PROTOCOL_VERSION";
+	const char *git_test_v = getenv(git_test_k);
+
+	if (git_test_v && strlen(git_test_v)) {
+		enum protocol_version version = parse_protocol_version(git_test_v);
+
+		if (version == protocol_unknown_version)
+			die("unknown value for %s: %s", git_test_k,
+			    git_test_v);
+
+		return version;
+	} else if (!git_config_get_string_const("protocol.version", &value)) {
 		enum protocol_version version = parse_protocol_version(value);
 
 		if (version == protocol_unknown_version)

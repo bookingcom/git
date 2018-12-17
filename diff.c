@@ -3313,14 +3313,14 @@ void diff_set_mnemonic_prefix(struct diff_options *options, const char *a, const
 		options->b_prefix = b;
 }
 
-struct userdiff_driver *get_textconv(struct index_state *istate,
+struct userdiff_driver *get_textconv(struct repository *r,
 				     struct diff_filespec *one)
 {
 	if (!DIFF_FILE_VALID(one))
 		return NULL;
 
-	diff_filespec_load_driver(one, istate);
-	return userdiff_get_textconv(one->driver);
+	diff_filespec_load_driver(one, r->index);
+	return userdiff_get_textconv(r, one->driver);
 }
 
 static void builtin_diff(const char *name_a,
@@ -3369,8 +3369,8 @@ static void builtin_diff(const char *name_a,
 	}
 
 	if (o->flags.allow_textconv) {
-		textconv_one = get_textconv(o->repo->index, one);
-		textconv_two = get_textconv(o->repo->index, two);
+		textconv_one = get_textconv(o->repo, one);
+		textconv_two = get_textconv(o->repo, two);
 	}
 
 	/* Never use a non-valid filename anywhere if at all possible */
@@ -5128,11 +5128,29 @@ int diff_opt_parse(struct diff_options *options,
 	else if (!strcmp(arg, "--abbrev"))
 		options->abbrev = DEFAULT_ABBREV;
 	else if (skip_prefix(arg, "--abbrev=", &arg)) {
-		options->abbrev = strtoul(arg, NULL, 10);
-		if (options->abbrev < MINIMUM_ABBREV)
+		int v;
+		char *end;
+		if (!strcmp(arg, ""))
+			die("--abbrev expects a value, got '%s'", arg);
+		v = strtoul(arg, &end, 10);
+		if (*end)
+			die("--abbrev expects a numerical value, got '%s'", arg);
+		if (*arg == '+' || *arg == '-') {
+			if (v == 0) {
+				die("relative abbrev must be non-zero");
+			} else if (abs(v) > the_hash_algo->hexsz) {
+				die("relative abbrev impossibly out of range");
+			} else {
+				default_abbrev_relative = v;
+				options->abbrev = DEFAULT_ABBREV;
+			}
+		} else if (v < MINIMUM_ABBREV) {
 			options->abbrev = MINIMUM_ABBREV;
-		else if (the_hash_algo->hexsz < options->abbrev)
+		} else if (the_hash_algo->hexsz < v) {
 			options->abbrev = the_hash_algo->hexsz;
+		} else {
+			options->abbrev = v;
+		}
 	}
 	else if ((argcount = parse_long_opt("src-prefix", av, &optarg))) {
 		options->a_prefix = optarg;
@@ -6434,7 +6452,7 @@ int textconv_object(struct repository *r,
 
 	df = alloc_filespec(path);
 	fill_filespec(df, oid, oid_valid, mode);
-	textconv = get_textconv(r->index, df);
+	textconv = get_textconv(r, df);
 	if (!textconv) {
 		free_filespec(df);
 		return 0;

@@ -56,7 +56,7 @@ test_expect_success 'fetch A (new commit : 1 connection)' '
 	rm -f $U &&
 	(
 		cd cloned &&
-		GIT_TRACE_PACKET=$UPATH git fetch &&
+		GIT_TRACE_PACKET=$UPATH GIT_TEST_PROTOCOL_VERSION= git fetch &&
 		test $A = $(git rev-parse --verify origin/master)
 	) &&
 	get_needs $U >actual &&
@@ -86,7 +86,7 @@ test_expect_success 'fetch C, T (new branch, tag : 1 connection)' '
 	rm -f $U &&
 	(
 		cd cloned &&
-		GIT_TRACE_PACKET=$UPATH git fetch &&
+		GIT_TRACE_PACKET=$UPATH GIT_TEST_PROTOCOL_VERSION= git fetch &&
 		test $C = $(git rev-parse --verify origin/cat) &&
 		test $T = $(git rev-parse --verify tag1) &&
 		test $A = $(git rev-parse --verify tag1^0)
@@ -122,7 +122,7 @@ test_expect_success 'fetch B, S (commit and tag : 1 connection)' '
 	rm -f $U &&
 	(
 		cd cloned &&
-		GIT_TRACE_PACKET=$UPATH git fetch &&
+		GIT_TRACE_PACKET=$UPATH GIT_TEST_PROTOCOL_VERSION= git fetch &&
 		test $B = $(git rev-parse --verify origin/master) &&
 		test $B = $(git rev-parse --verify tag2^0) &&
 		test $S = $(git rev-parse --verify tag2)
@@ -146,7 +146,7 @@ test_expect_success 'new clone fetch master and tags' '
 		cd clone2 &&
 		git init &&
 		git remote add origin .. &&
-		GIT_TRACE_PACKET=$UPATH git fetch &&
+		GIT_TRACE_PACKET=$UPATH GIT_TEST_PROTOCOL_VERSION= git fetch &&
 		test $B = $(git rev-parse --verify origin/master) &&
 		test $S = $(git rev-parse --verify tag2) &&
 		test $B = $(git rev-parse --verify tag2^0) &&

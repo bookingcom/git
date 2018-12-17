@@ -1162,12 +1162,30 @@ static int git_default_core_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
+	if (!strcmp(var, "core.validateabbrev")) {
+		if (!value)
+			return config_error_nonbool(var);
+		validate_abbrev =  git_config_bool(var, value);
+		return 0;
+	}
+
 	if (!strcmp(var, "core.abbrev")) {
 		if (!value)
 			return config_error_nonbool(var);
-		if (!strcasecmp(value, "auto"))
+		if (!strcasecmp(value, "auto")) {
 			default_abbrev = -1;
-		else {
+		} else if (*value == '+' || *value == '-') {
+			int relative = git_config_int(var, value);
+			if (relative == 0)
+				die(_("bad core.abbrev value %s. "
+				      "relative values must be non-zero"),
+				    value);
+			if (abs(relative) > GIT_SHA1_HEXSZ)
+				die(_("bad core.abbrev value %s. "
+				      "impossibly out of range"),
+				    value);
+			default_abbrev_relative = relative;
+		} else {
 			int abbrev = git_config_int(var, value);
 			if (abbrev < minimum_abbrev || abbrev > 40)
 				return error(_("abbrev length out of range: %d"), abbrev);

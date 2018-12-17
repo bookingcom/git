@@ -24,6 +24,8 @@ int check_stat = 1;
 int check_collisions = 1;
 int has_symlinks = 1;
 int minimum_abbrev = 4, default_abbrev = -1;
+int default_abbrev_relative = 0;
+int validate_abbrev = 1;
 int ignore_case;
 int assume_unchanged;
 int prefer_symlink_refs;
@@ -275,9 +277,9 @@ const char *get_git_work_tree(void)
 
 char *get_object_directory(void)
 {
-	if (!the_repository->objects->objectdir)
+	if (!the_repository->objects->odb)
 		BUG("git environment hasn't been setup");
-	return the_repository->objects->objectdir;
+	return the_repository->objects->odb->path;
 }
 
 int odb_mkstemp(struct strbuf *temp_filename, const char *pattern)
