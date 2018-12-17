@@ -646,7 +646,6 @@ partial_clone () {
 	test_commit -C "$SERVER" two &&
 	HASH2=$(git hash-object "$SERVER/two.t") &&
 	test_config -C "$SERVER" uploadpack.allowfilter 1 &&
-	test_config -C "$SERVER" uploadpack.allowanysha1inwant 1 &&
 
 	git clone --filter=blob:limit=0 "$URL" client &&
 
@@ -689,7 +688,6 @@ test_expect_success 'batch missing blob request during checkout' '
 	git -C server commit -m x &&
 
 	test_config -C server uploadpack.allowfilter 1 &&
-	test_config -C server uploadpack.allowanysha1inwant 1 &&
 
 	git clone --filter=blob:limit=0 "file://$(pwd)/server" client &&
 
@@ -720,7 +718,6 @@ test_expect_success 'batch missing blob request does not inadvertently try to fe
 	git -C server commit -m x &&
 
 	test_config -C server uploadpack.allowfilter 1 &&
-	test_config -C server uploadpack.allowanysha1inwant 1 &&
 
 	# Make sure that it succeeds
 	git clone --filter=blob:limit=0 "file://$(pwd)/server" client

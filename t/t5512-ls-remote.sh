@@ -195,6 +195,20 @@ do
 		! grep refs/tags/magic/one actual
 	'
 
+
+	test_expect_success "fetching a divergent object hidden by $configsection.hiderefs" "
+		test_when_finished 'test_unconfig $configsection.hiderefs' &&
+		git config --add $configsection.hiderefs refs/tags &&
+		test_when_finished 'git tag -d magic/divergent' &&
+		git tag -a -m'a tag' magic/divergent &&
+		SHA1_TAG=\$(git rev-parse magic/divergent) &&
+		echo \$SHA1_TAG >expect &&
+		git init client &&
+		test_when_finished 'rm -r client' &&
+		git -C client fetch ../ \$SHA1_TAG:refs/tags/magic/divergent &&
+		git -C client rev-parse magic/divergent >actual &&
+		test_cmp expect actual
+	"
 done
 
 test_expect_success 'overrides work between mixed transfer/upload-pack hideRefs' '
@@ -202,6 +216,12 @@ test_expect_success 'overrides work between mixed transfer/upload-pack hideRefs'
 	test_config transfer.hiderefs "!refs/tags/magic" &&
 	git ls-remote . >actual &&
 	grep refs/tags/magic actual
+'
+
+test_expect_success 'protocol v2 supports hiderefs' '
+	test_config uploadpack.hiderefs refs/tags &&
+	git -c protocol.version=2 ls-remote . >actual &&
+	! grep refs/tags actual
 '
 
 test_expect_success 'ls-remote --symref' '

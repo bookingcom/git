@@ -943,10 +943,7 @@ test_expect_success 'submodule update clone shallow submodule outside of depth' 
 		cd super3 &&
 		sed -e "s#url = ../#url = file://$pwd/#" <.gitmodules >.gitmodules.tmp &&
 		mv -f .gitmodules.tmp .gitmodules &&
-		test_must_fail git submodule update --init --depth=1 2>actual &&
-		test_i18ngrep "Direct fetching of that commit failed." actual &&
-		git -C ../submodule config uploadpack.allowReachableSHA1InWant true &&
-		git submodule update --init --depth=1 >actual &&
+		git submodule update --init --depth=1 &&
 		git -C submodule log --oneline >out &&
 		test_line_count = 1 out
 	)

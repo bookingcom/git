@@ -892,8 +892,9 @@ test_expect_success 'get --expiry-date' '
 	1510348087
 	0
 	EOF
+	date_valid1=$(git config --expiry-date date.valid1) &&
 	{
-		echo "$rel_out $(git config --expiry-date date.valid1)"
+		echo "$rel_out $date_valid1"
 		git config --expiry-date date.valid2 &&
 		git config --expiry-date date.valid3 &&
 		git config --expiry-date date.valid4 &&

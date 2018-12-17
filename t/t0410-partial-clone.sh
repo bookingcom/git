@@ -192,7 +192,6 @@ test_expect_success 'fetching of missing blobs works' '
 	git hash-object repo/foo.t >blobhash &&
 	rm -rf repo/.git/objects/* &&
 
-	git -C server config uploadpack.allowanysha1inwant 1 &&
 	git -C server config uploadpack.allowfilter 1 &&
 	git -C repo config core.repositoryformatversion 1 &&
 	git -C repo config extensions.partialclone "origin" &&
@@ -211,7 +210,6 @@ test_expect_success 'fetching of missing trees does not fetch blobs' '
 	git hash-object repo/foo.t >blobhash &&
 	rm -rf repo/.git/objects/* &&
 
-	git -C server config uploadpack.allowanysha1inwant 1 &&
 	git -C server config uploadpack.allowfilter 1 &&
 	git -C repo config core.repositoryformatversion 1 &&
 	git -C repo config extensions.partialclone "origin" &&

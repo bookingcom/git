@@ -850,6 +850,8 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 		case PARSE_OPT_HELP:
 		case PARSE_OPT_ERROR:
 			exit(129);
+		case PARSE_OPT_COMPLETE:
+			exit(0);
 		case PARSE_OPT_DONE:
 			if (ctx.argv[0])
 				dashdash_pos = ctx.cpidx;
@@ -875,6 +877,8 @@ parse_done:
 	} else if (show_progress < 0)
 		show_progress = isatty(2);
 
+	if (default_abbrev >= 0)
+		abbrev = default_abbrev;
 	if (0 < abbrev && abbrev < GIT_SHA1_HEXSZ)
 		/* one more abbrev length is needed for the boundary commit */
 		abbrev++;

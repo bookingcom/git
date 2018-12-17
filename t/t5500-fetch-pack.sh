@@ -439,14 +439,22 @@ test_expect_success 'setup tests for the --stdin parameter' '
 	) >input.dup
 '
 
-test_expect_success 'fetch refs from cmdline' '
-	(
-		cd client &&
-		git fetch-pack --no-progress .. $(cat ../input)
-	) >output &&
-	cut -d " " -f 2 <output | sort >actual &&
-	test_cmp expect actual
+test_expect_success 'setup fetch refs from cmdline v[12]' '
+	cp -r client client1 &&
+	cp -r client client2
 '
+
+for version in '' 1 2
+do
+	test_expect_success "protocol.version=$version fetch refs from cmdline" "
+		(
+			cd client$version &&
+			GIT_TEST_PROTOCOL_VERSION=$version git fetch-pack --no-progress .. \$(cat ../input)
+		) >output &&
+		cut -d ' ' -f 2 <output | sort >actual &&
+		test_cmp expect actual
+	"
+done
 
 test_expect_success 'fetch refs from stdin' '
 	(
@@ -592,8 +600,7 @@ test_expect_success 'fetch-pack can fetch a raw sha1' '
 		test_commit 1 &&
 		test_commit 2 &&
 		git update-ref refs/hidden/one HEAD^ &&
-		git config transfer.hiderefs refs/hidden &&
-		git config uploadpack.allowtipsha1inwant true
+		git config transfer.hiderefs refs/hidden
 	) &&
 	git fetch-pack hidden $(git -C hidden rev-parse refs/hidden/one)
 '
@@ -619,7 +626,7 @@ test_expect_success 'fetch-pack can fetch a raw sha1 overlapping a named ref' '
 		$(git -C server rev-parse refs/tags/1) refs/tags/1
 '
 
-test_expect_success 'fetch-pack cannot fetch a raw sha1 that is not advertised as a ref' '
+test_expect_success 'fetch-pack can fetch a raw sha1 that is not advertised as a ref' '
 	rm -rf server &&
 
 	git init server &&
@@ -628,9 +635,8 @@ test_expect_success 'fetch-pack cannot fetch a raw sha1 that is not advertised a
 	test_commit -C server 6 &&
 
 	git init client &&
-	test_must_fail git -C client fetch-pack ../server \
-		$(git -C server rev-parse refs/heads/master^) 2>err &&
-	test_i18ngrep "Server does not allow request for unadvertised object" err
+	git -C client fetch-pack ../server \
+		$(git -C server rev-parse refs/heads/master^)
 '
 
 check_prot_path () {

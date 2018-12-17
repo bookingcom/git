@@ -460,6 +460,8 @@ test_count=0
 test_fixed=0
 test_broken=0
 test_success=0
+test_todo_success=0
+test_todo_failure=0
 
 test_external_has_tap=0
 
@@ -486,13 +488,29 @@ trap 'exit $?' INT
 # the test_expect_* functions instead.
 
 test_ok_ () {
+	todo_blurb=
+	if match_pattern_list $this_test.$test_count $GIT_TODO_TESTS ||
+		    match_pattern_list $this_test $GIT_TODO_TESTS
+	then
+		todo_blurb=' # TODO (GIT_TODO_TESTS)'
+		test_todo_success=$(($test_todo_success + 1))
+	fi
 	test_success=$(($test_success + 1))
-	say_color "" "ok $test_count - $@"
+	say_color "" "ok $test_count - $@$todo_blurb"
 }
 
 test_failure_ () {
-	test_failure=$(($test_failure + 1))
-	say_color error "not ok $test_count - $1"
+	todo_blurb=
+	if match_pattern_list $this_test.$test_count $GIT_TODO_TESTS ||
+		    match_pattern_list $this_test $GIT_TODO_TESTS
+	then
+		test_success=$(($test_success + 1))
+		test_todo_failure=$(($test_todo_failure + 1))
+		todo_blurb=' # TODO (GIT_TODO_TESTS)'
+	else
+		test_failure=$(($test_failure + 1))
+	fi
+	say_color error "not ok $test_count - $1$todo_blurb"
 	shift
 	printf '%s\n' "$*" | sed -e 's/^/#	/'
 	test "$immediate" = "" || { GIT_EXIT_OK=t; exit 1; }
@@ -849,13 +867,18 @@ test_done () {
 		test_remaining=$test_count
 		msg="$test_count test(s)"
 	fi
+	msg_todo=
+	if test "$test_todo_success" != 0 || test "$test_todo_failure" != 0
+	then
+		msg_todo=" (including $test_todo_success/$test_todo_failure ok/failing TODO test(s))"
+	fi
 	case "$test_failure" in
 	0)
 		if test $test_external_has_tap -eq 0
 		then
 			if test $test_remaining -gt 0
 			then
-				say_color pass "# passed all $msg"
+				say_color pass "# passed all $msg$msg_todo"
 			fi
 
 			# Maybe print SKIP message

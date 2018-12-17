@@ -28,3 +28,11 @@ The known attack vectors are as follows:
   an object Y that the attacker already has, and the attacker falsely
   claims to have X and not Y, so the victim sends Y as a delta against X.
   The delta reveals regions of X that are similar to Y to the attacker.
+
+Before Git version 2.21 the
+`uploadpack.allow{Tip,Any,Reachable}SHA1InWant` allowed for tweaking
+linkgit:git-upload-pack[1] behavior to refuse to serve some refs. As
+noted above this served to lull users into a false sense of security,
+and the fetch protocol will now allow clients to fetch any object in
+the ref store. See `uploadpack.allowAnySHA1InWant` in
+linkgit:git-config[1].

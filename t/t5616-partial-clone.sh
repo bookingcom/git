@@ -25,8 +25,7 @@ test_expect_success 'setup normal src repo' '
 # bare clone "src" giving "srv.bare" for use as our server.
 test_expect_success 'setup bare clone for server' '
 	git clone --bare "file://$(pwd)/src" srv.bare &&
-	git -C srv.bare config --local uploadpack.allowfilter 1 &&
-	git -C srv.bare config --local uploadpack.allowanysha1inwant 1
+	git -C srv.bare config --local uploadpack.allowfilter 1
 '
 
 # do basic partial clone from "srv.bare"
@@ -159,7 +158,6 @@ test_expect_success 'partial clone with transfer.fsckobjects=1 uses index-pack -
 	git init src &&
 	test_commit -C src x &&
 	test_config -C src uploadpack.allowfilter 1 &&
-	test_config -C src uploadpack.allowanysha1inwant 1 &&
 
 	GIT_TRACE="$(pwd)/trace" git -c transfer.fsckobjects=1 \
 		clone --filter="blob:none" "file://$(pwd)/src" dst &&
@@ -213,7 +211,6 @@ test_expect_success 'partial clone fetches blobs pointed to by refs even if norm
 	git init src &&
 	test_commit -C src x &&
 	test_config -C src uploadpack.allowfilter 1 &&
-	test_config -C src uploadpack.allowanysha1inwant 1 &&
 
 	# Create a tag pointing to a blob.
 	BLOB=$(echo blob-contents | git -C src hash-object --stdin -w) &&
@@ -229,7 +226,6 @@ test_expect_success 'fetch what is specified on CLI even if already promised' '
 	git init src &&
 	test_commit -C src foo &&
 	test_config -C src uploadpack.allowfilter 1 &&
-	test_config -C src uploadpack.allowanysha1inwant 1 &&
 
 	git hash-object --stdin <src/foo.t >blob &&
 
@@ -257,7 +253,6 @@ test_expect_success 'upon cloning, check that all refs point to objects' '
 	test_create_repo "$SERVER" &&
 	test_commit -C "$SERVER" foo &&
 	test_config -C "$SERVER" uploadpack.allowfilter 1 &&
-	test_config -C "$SERVER" uploadpack.allowanysha1inwant 1 &&
 
 	# Create a tag pointing to a blob.
 	BLOB=$(echo blob-contents | git -C "$SERVER" hash-object --stdin -w) &&
@@ -281,7 +276,7 @@ test_expect_success 'upon cloning, check that all refs point to objects' '
 	test_must_fail git -c protocol.version=2 clone \
 		--filter=blob:none $HTTPD_URL/one_time_sed/server repo 2>err &&
 
-	grep "did not send all necessary objects" err &&
+	test_i18ngrep "did not send all necessary objects" err &&
 
 	# Ensure that the one-time-sed script was used.
 	! test -e "$HTTPD_ROOT_PATH/one-time-sed"
@@ -293,7 +288,6 @@ test_expect_success 'when partial cloning, tolerate server not sending target of
 	test_create_repo "$SERVER" &&
 	test_commit -C "$SERVER" foo &&
 	test_config -C "$SERVER" uploadpack.allowfilter 1 &&
-	test_config -C "$SERVER" uploadpack.allowanysha1inwant 1 &&
 
 	# Create an annotated tag pointing to a blob.
 	BLOB=$(echo blob-contents | git -C "$SERVER" hash-object --stdin -w) &&

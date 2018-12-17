@@ -274,7 +274,6 @@ test_expect_success 'setup filter tests' '
 	test_commit -C server message2 a.txt &&
 	git -C server config protocol.version 2 &&
 	git -C server config uploadpack.allowfilter 1 &&
-	git -C server config uploadpack.allowanysha1inwant 1 &&
 	git -C server config protocol.version 2
 '
 

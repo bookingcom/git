@@ -283,7 +283,6 @@ test_expect_success 'test allowreachablesha1inwant' '
 	test_when_finished "rm -rf test_reachable.git" &&
 	server="$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
 	master_sha=$(git -C "$server" rev-parse refs/heads/master) &&
-	git -C "$server" config uploadpack.allowreachablesha1inwant 1 &&
 
 	git init --bare test_reachable.git &&
 	git -C test_reachable.git remote add origin "$HTTPD_URL/smart/repo.git" &&
@@ -302,7 +301,6 @@ test_expect_success 'test allowreachablesha1inwant with unreachable' '
 
 	server="$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
 	master_sha=$(git -C "$server" rev-parse refs/heads/master) &&
-	git -C "$server" config uploadpack.allowreachablesha1inwant 1 &&
 
 	git init --bare test_reachable.git &&
 	git -C test_reachable.git remote add origin "$HTTPD_URL/smart/repo.git" &&
@@ -321,13 +319,11 @@ test_expect_success 'test allowanysha1inwant with unreachable' '
 
 	server="$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
 	master_sha=$(git -C "$server" rev-parse refs/heads/master) &&
-	git -C "$server" config uploadpack.allowreachablesha1inwant 1 &&
 
 	git init --bare test_reachable.git &&
 	git -C test_reachable.git remote add origin "$HTTPD_URL/smart/repo.git" &&
 	test_must_fail git -C test_reachable.git fetch origin "$(git rev-parse HEAD)" &&
 
-	git -C "$server" config uploadpack.allowanysha1inwant 1 &&
 	git -C test_reachable.git fetch origin "$(git rev-parse HEAD)"
 '
 

@@ -1,31 +1,41 @@
 uploadpack.hideRefs::
 	This variable is the same as `transfer.hideRefs`, but applies
 	only to `upload-pack` (and so affects only fetches, not pushes).
-	An attempt to fetch a hidden ref by `git fetch` will fail.  See
-	also `uploadpack.allowTipSHA1InWant`.
++
+This can be used in some setups to reduce the size of the ref
+advertisement, see also `protocol.version` for using a protocol
+version that allows them to be filtered by the client.
++
+In earlier versions of Git attempts to fetch an object pointed to by a
+hidden ref would fail, this is no longer the case. See
+`uploadpack.allowAnySHA1InWant`.
 
 uploadpack.allowTipSHA1InWant::
-	When `uploadpack.hideRefs` is in effect, allow `upload-pack`
-	to accept a fetch request that asks for an object at the tip
-	of a hidden ref (by default, such a request is rejected).
-	See also `uploadpack.hideRefs`.  Even if this is false, a client
-	may be able to steal objects via the techniques described in the
-	"SECURITY" section of the linkgit:gitnamespaces[7] man page; it's
-	best to keep private data in a separate repository.
+	Depreacted. Used to allow `upload-pack` to accept a fetch
+	request that asked for an object at the tip of a hidden
+	ref. Now always `true`. See `uploadpack.allowAnySHA1InWant`
+	below for details.
 
 uploadpack.allowReachableSHA1InWant::
-	Allow `upload-pack` to accept a fetch request that asks for an
-	object that is reachable from any ref tip. However, note that
-	calculating object reachability is computationally expensive.
-	Defaults to `false`.  Even if this is false, a client may be able
-	to steal objects via the techniques described in the "SECURITY"
-	section of the linkgit:gitnamespaces[7] man page; it's best to
-	keep private data in a separate repository.
+	Depreacted. Used to allow `upload-pack` to accept a fetch
+	request that asked for an object that was reachable from any
+	ref tip. Now always `true`. See
+	`uploadpack.allowAnySHA1InWant` below for details.
 
 uploadpack.allowAnySHA1InWant::
-	Allow `upload-pack` to accept a fetch request that asks for any
-	object at all.
-	Defaults to `false`.
+	Deprecated. Before Git version 2.21 the
+	`uploadpack.allow{Tip,Any,Reachable}SHA1InWant` settings were
+	`false` by default. Now they're unconditionally `true`, which
+	means fetch request that ask for any object in the object
+	store will be accepted, regardless of whether such an object
+	is at the tip of a ref, reachable by no ref etc.
++
+The reason for the change in default is as noted in the "SECURITY"
+section of linkgit:git-fetch[1] a determined client can get to any
+previously forbidden objects the server has access to by manipulating
+the client/server dialog. If you host objects that should be kept
+secret from some clients it's best to keep them in a separate
+repository.
 
 uploadpack.keepAlive::
 	When `upload-pack` has started `pack-objects`, there may be a

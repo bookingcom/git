@@ -1147,26 +1147,14 @@ test_expect_success 'fetch exact SHA1' '
 		git prune &&
 		test_must_fail git cat-file -t $the_commit &&
 
-		# fetching the hidden object should fail by default
-		test_must_fail git fetch -v ../testrepo $the_commit:refs/heads/copy 2>err &&
-		test_i18ngrep "Server does not allow request for unadvertised object" err &&
-		test_must_fail git rev-parse --verify refs/heads/copy &&
+		# fetching the object should work
+		git fetch -v ../testrepo $the_commit:refs/heads/copy &&
+		git rev-parse --verify refs/heads/copy &&
 
-		# the server side can allow it to succeed
-		(
-			cd ../testrepo &&
-			git config uploadpack.allowtipsha1inwant true
-		) &&
-
-		git fetch -v ../testrepo $the_commit:refs/heads/copy master:refs/heads/extra &&
 		cat >expect <<-EOF &&
 		$the_commit
-		$the_first_commit
 		EOF
-		{
-			git rev-parse --verify refs/heads/copy &&
-			git rev-parse --verify refs/heads/extra
-		} >actual &&
+		git rev-parse --verify refs/heads/copy >actual &&
 		test_cmp expect actual
 	)
 '
@@ -1190,6 +1178,25 @@ test_expect_success 'fetch exact SHA1 in protocol v2' '
 	git -C child fetch -v ../testrepo $the_commit:refs/heads/copy
 '
 
+for state in true false
+do
+	test_expect_success "Deprecated uploadpack.*=$state settings warn" "
+		mk_empty deprecated-warnings &&
+		test_commit -C deprecated-warnings A &&
+		test_config -C deprecated-warnings uploadpack.allowTipSHA1InWant $state &&
+		test_config -C deprecated-warnings uploadpack.allowReachableSHA1InWant $state &&
+		test_config -C deprecated-warnings uploadpack.allowAnySHA1InWant $state &&
+		mk_empty target &&
+		(
+			cd target &&
+			git fetch ../deprecated-warnings/.git refs/tags/A:refs/tags/A 2>stderr &&
+			test_i18ngrep 'warning: .*uploadpack.allowTipSHA1InWant .*deprecated' stderr &&
+			test_i18ngrep 'warning: .*uploadpack.allowReachableSHA1InWant.* deprecated' stderr &&
+			test_i18ngrep 'warning: .*uploadpack.allowAnySHA1InWant.* deprecated' stderr
+		)
+	"
+done
+
 for configallowtipsha1inwant in true false
 do
 	test_expect_success "shallow fetch reachable SHA1 (but not a ref), allowtipsha1inwant=$configallowtipsha1inwant" '
@@ -1204,8 +1211,6 @@ do
 		mk_empty shallow &&
 		(
 			cd shallow &&
-			test_must_fail git fetch --depth=1 ../testrepo/.git $SHA1 &&
-			git --git-dir=../testrepo/.git config uploadpack.allowreachablesha1inwant true &&
 			git fetch --depth=1 ../testrepo/.git $SHA1 &&
 			git cat-file commit $SHA1
 		)
@@ -1232,15 +1237,10 @@ do
 		mk_empty shallow &&
 		(
 			cd shallow &&
-			test_must_fail ok=sigpipe git fetch ../testrepo/.git $SHA1_3 &&
-			test_must_fail ok=sigpipe git fetch ../testrepo/.git $SHA1_1 &&
-			git --git-dir=../testrepo/.git config uploadpack.allowreachablesha1inwant true &&
+			git fetch ../testrepo/.git $SHA1_3 &&
 			git fetch ../testrepo/.git $SHA1_1 &&
 			git cat-file commit $SHA1_1 &&
-			test_must_fail git cat-file commit $SHA1_2 &&
-			git fetch ../testrepo/.git $SHA1_2 &&
-			git cat-file commit $SHA1_2 &&
-			test_must_fail ok=sigpipe git fetch ../testrepo/.git $SHA1_3
+			git cat-file commit $SHA1_2
 		)
 	'
 done

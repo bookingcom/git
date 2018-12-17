@@ -16,13 +16,30 @@ int parse_opt_abbrev_cb(const struct option *opt, const char *arg, int unset)
 	if (!arg) {
 		v = unset ? 0 : DEFAULT_ABBREV;
 	} else {
+		const char *origarg = arg;
+		if (!strcmp(arg, ""))
+			return error(_("option `%s' expects a value"),
+				     opt->long_name);
 		v = strtol(arg, (char **)&arg, 10);
 		if (*arg)
-			return opterror(opt, "expects a numerical value", 0);
-		if (v && v < MINIMUM_ABBREV)
+			return error(_("option `%s' expects a numerical value"),
+				     opt->long_name);
+		if (*origarg == '+' || *origarg == '-') {
+			if (v == 0) {
+				return error(_("option `%s' must be non-zero"),
+					     opt->long_name);
+			} else if (abs(v) > GIT_SHA1_HEXSZ) {
+				return error(_("option `%s' is impossibly out of range"),
+					     opt->long_name);
+			} else {
+				default_abbrev_relative = v;
+				v = -1;
+			}
+		} else if (v && v < MINIMUM_ABBREV) {
 			v = MINIMUM_ABBREV;
-		else if (v > 40)
-			v = 40;
+		} else if (v > GIT_SHA1_HEXSZ) {
+			v = GIT_SHA1_HEXSZ;
+		}
 	}
 	*(int *)(opt->value) = v;
 	return 0;
@@ -47,8 +64,8 @@ int parse_opt_color_flag_cb(const struct option *opt, const char *arg,
 		arg = unset ? "never" : (const char *)opt->defval;
 	value = git_config_colorbool(NULL, arg);
 	if (value < 0)
-		return opterror(opt,
-			"expects \"always\", \"auto\", or \"never\"", 0);
+		return error(_("option `%s' expects \"always\", \"auto\", or \"never\""),
+			     opt->long_name);
 	*(int *)opt->value = value;
 	return 0;
 }

@@ -68,7 +68,6 @@ test_expect_success 'in partial clone, sparse checkout only fetches needed blobs
 	git clone "file://$(pwd)/server" client &&
 
 	test_config -C server uploadpack.allowfilter 1 &&
-	test_config -C server uploadpack.allowanysha1inwant 1 &&
 	echo a >server/a &&
 	echo bb >server/b &&
 	mkdir server/c &&

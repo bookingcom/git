@@ -1434,7 +1434,8 @@ test_expect_success 'double dash "git checkout"' '
 	--ignore-other-worktrees Z
 	--recurse-submodules Z
 	--progress Z
-	--no-quiet Z
+	--guess Z
+	--no-guess Z
 	--no-... Z
 	EOF
 '
@@ -1539,7 +1540,7 @@ test_expect_success 'complete tree filename with metacharacters' '
 	EOF
 '
 
-test_expect_success 'send-email' '
+test_expect_success PERL 'send-email' '
 	test_completion "git send-email --cov" "--cover-letter " &&
 	test_completion "git send-email ma" "master "
 '
