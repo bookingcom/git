@@ -2085,11 +2085,29 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	} else if (!strcmp(arg, "--abbrev")) {
 		revs->abbrev = DEFAULT_ABBREV;
 	} else if (skip_prefix(arg, "--abbrev=", &optarg)) {
-		revs->abbrev = strtoul(optarg, NULL, 10);
-		if (revs->abbrev < MINIMUM_ABBREV)
+		int v;
+		char *end;
+		if (!strcmp(optarg, ""))
+			die("--abbrev expects a value, got '%s'", optarg);
+		v = strtoul(optarg, &end, 10);
+		if (*end)
+			die("--abbrev expects a numerical value, got '%s'", optarg);
+		if (*optarg == '+' || *optarg == '-') {
+			if (v == 0) {
+				die("relative abbrev must be non-zero");
+			} else if (abs(v) > hexsz) {
+				die("relative abbrev impossibly out of range");
+			} else {
+				default_abbrev_relative = v;
+				revs->abbrev = DEFAULT_ABBREV;
+			}
+		} else if (v < MINIMUM_ABBREV) {
 			revs->abbrev = MINIMUM_ABBREV;
-		else if (revs->abbrev > hexsz)
+		} else if (v > hexsz) {
 			revs->abbrev = hexsz;
+		} else {
+			revs->abbrev = v;
+		}
 	} else if (!strcmp(arg, "--abbrev-commit")) {
 		revs->abbrev_commit = 1;
 		revs->abbrev_commit_given = 1;

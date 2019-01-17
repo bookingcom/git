@@ -88,6 +88,20 @@ include::blame-options.txt[]
 	Instead of using the default 7+1 hexadecimal digits as the
 	abbreviated object name, use <n>+1 digits. Note that 1 column
 	is used for a caret to mark the boundary commit.
++
+Because of this UI design, the only way to get the full SHA-1 of the
+boundary commit is to use the `--porcelain` format. With `--abbrev=40`
+only 39 characters of the boundary SHA-1 will be emitted, since one
+will be used for the caret to mark the boundary. This behavior was
+different before 2.11.1, git would then emit the 40 character if
+requested, resulting in unaligned output.
++
+Before 2.19, setting `core.abbrev=40` wouldn't apply the above rule
+and would cause blame to emit output that was unaligned. This bug has
+since been fixed.
++
+Can also be set to a relative value, see `core.abbrev` in
+linkgit:git-diff[1].
 
 
 THE PORCELAIN FORMAT

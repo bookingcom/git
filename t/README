@@ -218,28 +218,40 @@ GIT_TEST_EXEC_PATH defaults to `$GIT_TEST_INSTALLED/git --exec-path`.
 Skipping Tests
 --------------
 
-In some environments, certain tests have no way of succeeding
-due to platform limitation, such as lack of 'unzip' program, or
-filesystem that do not allow arbitrary sequence of non-NUL bytes
-as pathnames.
+Certain tests may fail intermittently or entirely. These should
+ideally be reported as bugs and fixed, or guarded by a prerequisite
+(see "Using test prerequisites" below). But until then they can be
+skipped.
 
-You should be able to say something like
+To skip tests, set either the GIT_SKIP_TESTS or GIT_TODO_TESTS
+variables. The difference is that with SKIP the tests won't be run at
+all, whereas they will be run with TODO, but in success or failure
+annotated as a TODO test.
+
+It's usually preferrable to use TODO, since the test suite will report
+those tests that unexpectedly succeed, which may indicate that
+whatever bug broke the test in the past has been fixed, and the test
+should be un-TODO'd. There's no such feedback loop with
+GIT_SKIP_TESTS.
+
+The GIT_SKIP_TESTS and GIT_TODO_TESTS take the same values. Individual
+tests can be skipped:
 
     $ GIT_SKIP_TESTS=t9200.8 sh ./t9200-git-cvsexport-commit.sh
 
-and even:
+Or tests matching a glob:
 
     $ GIT_SKIP_TESTS='t[0-4]??? t91?? t9200.8' make
 
-to omit such tests.  The value of the environment variable is a
-SP separated list of patterns that tells which tests to skip,
-and either can match the "t[0-9]{4}" part to skip the whole
-test, or t[0-9]{4} followed by ".$number" to say which
-particular test to skip.
+The value of the environment variable is a SP separated list of
+patterns that tells which tests to skip, and either can match the
+"t[0-9]{4}" part to skip the whole test, or t[0-9]{4} followed by
+".$number" to say which particular test to skip.
 
 For an individual test suite --run could be used to specify that
 only some tests should be run or that some tests should be
-excluded from a run.
+excluded from a run. The --run option is a shorthand for setting
+a GIT_SKIP_TESTS pattern.
 
 The argument for --run is a list of individual test numbers or
 ranges with an optional negation prefix that define what tests in
@@ -373,6 +385,9 @@ index loading single threaded.
 GIT_TEST_MULTI_PACK_INDEX=<boolean>, when true, forces the multi-pack-
 index to be written after every 'git repack' command, and overrides the
 'core.multiPackIndex' setting to true.
+
+GIT_TEST_CHECK_COLLISIONS=<boolean> excercises the
+core.checkCollisions=false codepath.
 
 Naming Tests
 ------------
@@ -511,7 +526,7 @@ And here are the "don'ts:"
 
    The harness will catch this as a programming error of the test.
    Use test_done instead if you need to stop the tests early (see
-   "Skipping tests" below).
+   "Using test prerequisites" below).
 
  - Don't use '! git cmd' when you want to make sure the git command
    exits with failure in a controlled way by calling "die()".  Instead,
@@ -604,28 +619,28 @@ And here are the "don'ts:"
    it'll complain if anything is amiss.
 
 
-Skipping tests
---------------
+Using test prerequisites
+------------------------
 
-If you need to skip tests you should do so by using the three-arg form
-of the test_* functions (see the "Test harness library" section
-below), e.g.:
+Tests that depend on something which may not be present on the system
+should use the three-arg form of the test_* functions (see the "Test
+harness library" section below), e.g.:
 
-    test_expect_success PERL 'I need Perl' '
-        perl -e "hlagh() if unf_unf()"
+    test_expect_success SYMLINKS 'setup' '
+        ln -s target link
     '
 
 The advantage of skipping tests like this is that platforms that don't
-have the PERL and other optional dependencies get an indication of how
+have the SYMLINKS and other optional dependencies get an indication of how
 many tests they're missing.
 
 If the test code is too hairy for that (i.e. does a lot of setup work
 outside test assertions) you can also skip all remaining tests by
 setting skip_all and immediately call test_done:
 
-	if ! test_have_prereq PERL
+	if ! test_have_prereq SYMLINKS
 	then
-	    skip_all='skipping perl interface tests, perl not available'
+	    skip_all="skipping symlink tests, the filesystem doesn't support it"
 	    test_done
 	fi
 
@@ -813,9 +828,13 @@ library for your script to use.
    Check whether the <expected> rev points to the same commit as the
    <actual> rev.
 
+ - test_byte_count (= | -lt | -ge | ...) <length> <file>
+
+   Check whether a file has the number of bytes it is expected to.
+
  - test_line_count (= | -lt | -ge | ...) <length> <file>
 
-   Check whether a file has the length it is expected to.
+   Check whether a file has the number of lines it is expected to.
 
  - test_path_is_file <path> [<diagnosis>]
    test_path_is_dir <path> [<diagnosis>]
