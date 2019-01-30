@@ -136,4 +136,25 @@ test_expect_success CASE_INSENSITIVE_FS 'dup finding can be case-insensitive' '
 	test_cmp expect actual.alternates
 '
 
+test_expect_success 'print "error" on non-existing alternate' '
+	git init --bare I &&
+	echo DOES_NOT_EXIST >I/objects/info/alternates &&
+	git -C I fsck 2>stderr &&
+	test_i18ngrep "does not exist; check" stderr
+'
+
+test_expect_success 'print "error" on alternate that looks like a git repository' '
+	git init --bare J &&
+	git init --bare K &&
+
+	# H is bare, G is not
+	echo ../../H >J/objects/info/alternates &&
+	echo ../../G >K/objects/info/alternates &&
+
+	git -C J fsck 2>stderr &&
+	test_i18ngrep "looks like a git repository; alternates must" stderr &&
+	git -C K fsck 2>stderr &&
+	test_i18ngrep "looks like a git repository; alternates must" stderr
+'
+
 test_done

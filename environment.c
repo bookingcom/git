@@ -24,6 +24,8 @@ int check_stat = 1;
 int check_collisions = 1;
 int has_symlinks = 1;
 int minimum_abbrev = 4, default_abbrev = -1;
+int default_abbrev_relative = 0;
+int validate_abbrev = 1;
 int ignore_case;
 int assume_unchanged;
 int prefer_symlink_refs;

@@ -651,6 +651,21 @@ int find_unique_abbrev_r(char *hex, const struct object_id *oid, int len)
 	if (len == hexsz || !len)
 		return hexsz;
 
+	if (default_abbrev_relative) {
+		int dar = default_abbrev_relative;
+		if (len + dar > GIT_SHA1_HEXSZ) {
+			return GIT_SHA1_HEXSZ;
+		} else if (len + dar < MINIMUM_ABBREV) {
+			len = MINIMUM_ABBREV;
+			dar = 0;
+		}
+		len += dar;
+	}
+	if (!validate_abbrev) {
+		hex[len] = 0;
+		return len;
+	}
+
 	mad.init_len = len;
 	mad.cur_len = len;
 	mad.hex = hex;

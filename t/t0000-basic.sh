@@ -324,9 +324,10 @@ test_expect_success 'test --verbose-only' '
 	EOF
 '
 
-test_expect_success 'GIT_SKIP_TESTS' "
+test_expect_success 'GIT_{SKIP,TODO}_TESTS' "
 	(
 		GIT_SKIP_TESTS='git.2' && export GIT_SKIP_TESTS &&
+		GIT_TODO_TESTS='git.3' && export GIT_TODO_TESTS &&
 		run_sub_test_lib_test git-skip-tests-basic \
 			'GIT_SKIP_TESTS' <<-\\EOF &&
 		for i in 1 2 3
@@ -338,16 +339,17 @@ test_expect_success 'GIT_SKIP_TESTS' "
 		check_sub_test_lib_test git-skip-tests-basic <<-\\EOF
 		> ok 1 - passing test #1
 		> ok 2 # skip passing test #2 (GIT_SKIP_TESTS)
-		> ok 3 - passing test #3
-		> # passed all 3 test(s)
+		> ok 3 - passing test #3 # TODO (GIT_TODO_TESTS)
+		> # passed all 3 test(s) (including 1/0 ok/failing TODO test(s))
 		> 1..3
 		EOF
 	)
 "
 
-test_expect_success 'GIT_SKIP_TESTS several tests' "
+test_expect_success 'GIT_{SKIP,TODO}_TESTS several tests' "
 	(
 		GIT_SKIP_TESTS='git.2 git.5' && export GIT_SKIP_TESTS &&
+		GIT_TODO_TESTS='git.3 git.6' && export GIT_TODO_TESTS &&
 		run_sub_test_lib_test git-skip-tests-several \
 			'GIT_SKIP_TESTS several tests' <<-\\EOF &&
 		for i in 1 2 3 4 5 6
@@ -359,22 +361,25 @@ test_expect_success 'GIT_SKIP_TESTS several tests' "
 		check_sub_test_lib_test git-skip-tests-several <<-\\EOF
 		> ok 1 - passing test #1
 		> ok 2 # skip passing test #2 (GIT_SKIP_TESTS)
-		> ok 3 - passing test #3
+		> ok 3 - passing test #3 # TODO (GIT_TODO_TESTS)
 		> ok 4 - passing test #4
 		> ok 5 # skip passing test #5 (GIT_SKIP_TESTS)
-		> ok 6 - passing test #6
-		> # passed all 6 test(s)
+		> ok 6 - passing test #6 # TODO (GIT_TODO_TESTS)
+		> # passed all 6 test(s) (including 2/0 ok/failing TODO test(s))
 		> 1..6
 		EOF
 	)
 "
 
-test_expect_success 'GIT_SKIP_TESTS sh pattern' "
+test_expect_success 'GIT_{SKIP,TODO}_TESTS sh pattern' "
 	(
 		GIT_SKIP_TESTS='git.[2-5]' && export GIT_SKIP_TESTS &&
+		# Overlap between SKIP and TODO. No attempt is made to
+		# be smart about it.
+		GIT_TODO_TESTS='git.[4-8]' && export GIT_TODO_TESTS &&
 		run_sub_test_lib_test git-skip-tests-sh-pattern \
 			'GIT_SKIP_TESTS sh pattern' <<-\\EOF &&
-		for i in 1 2 3 4 5 6
+		for i in 1 2 3 4 5 6 7 8 9
 		do
 			test_expect_success \"passing test #\$i\" 'true'
 		done
@@ -386,9 +391,78 @@ test_expect_success 'GIT_SKIP_TESTS sh pattern' "
 		> ok 3 # skip passing test #3 (GIT_SKIP_TESTS)
 		> ok 4 # skip passing test #4 (GIT_SKIP_TESTS)
 		> ok 5 # skip passing test #5 (GIT_SKIP_TESTS)
-		> ok 6 - passing test #6
-		> # passed all 6 test(s)
-		> 1..6
+		> ok 6 - passing test #6 # TODO (GIT_TODO_TESTS)
+		> ok 7 - passing test #7 # TODO (GIT_TODO_TESTS)
+		> ok 8 - passing test #8 # TODO (GIT_TODO_TESTS)
+		> ok 9 - passing test #9
+		> # passed all 9 test(s) (including 3/0 ok/failing TODO test(s))
+		> 1..9
+		EOF
+	)
+"
+
+test_expect_success 'GIT_SKIP_TESTS entire file' "
+	(
+		GIT_SKIP_TESTS='git' && export GIT_SKIP_TESTS &&
+		run_sub_test_lib_test git-skip-tests-entire-file \
+			'GIT_SKIP_TESTS' <<-\\EOF &&
+		for i in 1 2 3
+		do
+			test_expect_success \"passing test #\$i\" 'true'
+		done
+		test_done
+		EOF
+		check_sub_test_lib_test git-skip-tests-entire-file <<-\\EOF
+		1..0 # SKIP skip all tests in git
+		EOF
+	)
+"
+
+test_expect_success 'GIT_TODO_TESTS entire file' "
+	(
+		GIT_TODO_TESTS='git' && export GIT_TODO_TESTS &&
+		run_sub_test_lib_test git-todo-tests-entire-file \
+			'GIT_TODO_TESTS' <<-\\EOF &&
+		for i in 1 2 3
+		do
+			test_expect_success \"failing test #\$i\" 'fail'
+		done
+		test_done
+		EOF
+		check_sub_test_lib_test git-todo-tests-entire-file <<-\\EOF
+		not ok 1 - failing test #1 # TODO (GIT_TODO_TESTS)
+		#	fail
+		not ok 2 - failing test #2 # TODO (GIT_TODO_TESTS)
+		#	fail
+		not ok 3 - failing test #3 # TODO (GIT_TODO_TESTS)
+		#	fail
+		# passed all 3 test(s) (including 0/3 ok/failing TODO test(s))
+		1..3
+		EOF
+	)
+"
+
+test_expect_success 'GIT_TODO_TESTS mixed failure' "
+	(
+		GIT_TODO_TESTS='git' && export GIT_TODO_TESTS &&
+		run_sub_test_lib_test git-todo-tests-mixed \
+			'GIT_TODO_TESTS' <<-\\EOF &&
+		test_expect_success \"success\" 'true'
+		test_expect_success \"success\" 'false'
+		test_expect_failure \"success\" 'true'
+		test_expect_failure \"success\" 'false'
+		test_done
+		EOF
+		check_sub_test_lib_test git-todo-tests-mixed <<-\\EOF
+		ok 1 - success # TODO (GIT_TODO_TESTS)
+		not ok 2 - success # TODO (GIT_TODO_TESTS)
+		#	false
+		ok 3 - success # TODO known breakage vanished
+		not ok 4 - success # TODO known breakage
+		# 1 known breakage(s) vanished; please update test(s)
+		# still have 1 known breakage(s)
+		# passed all remaining 2 test(s) (including 1/1 ok/failing TODO test(s))
+		1..4
 		EOF
 	)
 "
