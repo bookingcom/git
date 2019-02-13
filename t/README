@@ -397,6 +397,9 @@ GIT_TEST_SIDEBAND_ALL=<boolean>, when true, overrides the
 fetch-pack to not request sideband-all (even if the server advertises
 sideband-all).
 
+GIT_TEST_CHECK_COLLISIONS=<boolean> excercises the
+core.checkCollisions=false codepath.
+
 Naming Tests
 ------------
 
@@ -836,9 +839,13 @@ library for your script to use.
    Check whether the <expected> rev points to the same commit as the
    <actual> rev.
 
+ - test_byte_count (= | -lt | -ge | ...) <length> <file>
+
+   Check whether a file has the number of bytes it is expected to.
+
  - test_line_count (= | -lt | -ge | ...) <length> <file>
 
-   Check whether a file has the length it is expected to.
+   Check whether a file has the number of lines it is expected to.
 
  - test_path_is_file <path> [<diagnosis>]
    test_path_is_dir <path> [<diagnosis>]
