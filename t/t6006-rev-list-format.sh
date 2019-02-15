@@ -460,14 +460,12 @@ test_expect_success '--abbrev' '
 
 test_expect_success '%H is not affected by --abbrev-commit' '
 	git log -1 --format=%H --abbrev-commit --abbrev=20 HEAD >actual &&
-	len=$(wc -c <actual) &&
-	test $len = 41
+	test_byte_count = 41 actual
 '
 
 test_expect_success '%h is not affected by --abbrev-commit' '
 	git log -1 --format=%h --abbrev-commit --abbrev=20 HEAD >actual &&
-	len=$(wc -c <actual) &&
-	test $len = 21
+	test_byte_count = 21 actual
 '
 
 test_expect_success '"%h %gD: %gs" is same as git-reflog' '
