@@ -232,6 +232,53 @@ test_expect_success 'more history' '
 
 '
 
+test_expect_success 'ambiguous objects and core.abbrev' '
+	cat >expected <<-\EOF &&
+	00000000006
+	0000000005
+	00000000008
+	000000000004
+	0000000000e
+	EOF
+	git -c core.abbrev=4 log --pretty=tformat:%h >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'ambiguous objects and core.validateAbbrev' '
+	git -c core.abbrev=4 -c core.validateabbrev=true log --pretty=tformat:%h >actual &&
+	test_cmp expected actual &&
+
+	cat >expected <<-\EOF &&
+	0000
+	0000
+	0000
+	0000
+	0000
+	EOF
+	git -c core.abbrev=4 -c core.validateabbrev=false log --pretty=tformat:%h >actual &&
+	test_cmp expected actual &&
+
+	cat >expected <<-\EOF &&
+	00000000006
+	0000000005b
+	00000000008
+	000000000004
+	0000000000e
+	EOF
+	git -c core.abbrev=+4 log --pretty=tformat:%h >actual &&
+	test_cmp expected actual &&
+
+	cat >expected <<-\EOF &&
+	00000000006
+	0000000005b
+	00000000008
+	00000000000
+	0000000000e
+	EOF
+	git -c core.abbrev=+4 -c core.validateabbrev=false log --pretty=tformat:%h >actual &&
+	test_cmp expected actual
+'
+
 test_expect_failure 'parse describe name taking advantage of generation' '
 	# ambiguous at the object name level, but there is only one
 	# such commit at generation 0

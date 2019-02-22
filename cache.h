@@ -847,6 +847,8 @@ extern int check_stat;
 extern int quote_path_fully;
 extern int has_symlinks;
 extern int minimum_abbrev, default_abbrev;
+extern int default_abbrev_relative;
+extern int validate_abbrev;
 extern int ignore_case;
 extern int assume_unchanged;
 extern int prefer_symlink_refs;
@@ -864,6 +866,7 @@ extern size_t packed_git_limit;
 extern size_t delta_base_cache_limit;
 extern unsigned long big_file_threshold;
 extern unsigned long pack_size_limit_cfg;
+extern int check_collisions;
 
 /*
  * Accessors for the core.sharedrepository config which lazy-load the value
