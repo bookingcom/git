@@ -16,14 +16,30 @@ int parse_opt_abbrev_cb(const struct option *opt, const char *arg, int unset)
 	if (!arg) {
 		v = unset ? 0 : DEFAULT_ABBREV;
 	} else {
+		const char *origarg = arg;
+		if (!strcmp(arg, ""))
+			return error(_("option `%s' expects a value"),
+				     opt->long_name);
 		v = strtol(arg, (char **)&arg, 10);
 		if (*arg)
 			return error(_("option `%s' expects a numerical value"),
 				     opt->long_name);
-		if (v && v < MINIMUM_ABBREV)
+		if (*origarg == '+' || *origarg == '-') {
+			if (v == 0) {
+				return error(_("option `%s' must be non-zero"),
+					     opt->long_name);
+			} else if (abs(v) > GIT_SHA1_HEXSZ) {
+				return error(_("option `%s' is impossibly out of range"),
+					     opt->long_name);
+			} else {
+				default_abbrev_relative = v;
+				v = -1;
+			}
+		} else if (v && v < MINIMUM_ABBREV) {
 			v = MINIMUM_ABBREV;
-		else if (v > 40)
-			v = 40;
+		} else if (v > GIT_SHA1_HEXSZ) {
+			v = GIT_SHA1_HEXSZ;
+		}
 	}
 	*(int *)(opt->value) = v;
 	return 0;

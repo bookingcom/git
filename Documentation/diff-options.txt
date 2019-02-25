@@ -445,6 +445,9 @@ endif::git-format-patch[]
 	independent of the `--full-index` option above, which controls
 	the diff-patch output format.  Non default number of
 	digits can be specified with `--abbrev=<n>`.
++
+Can also be set to a relative value, see `core.abbrev` in
+linkgit:git-diff[1].
 
 -B[<n>][/<m>]::
 --break-rewrites[=[<n>][/<m>]]::

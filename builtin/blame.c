@@ -877,6 +877,8 @@ parse_done:
 	} else if (show_progress < 0)
 		show_progress = isatty(2);
 
+	if (default_abbrev >= 0)
+		abbrev = default_abbrev;
 	if (0 < abbrev && abbrev < GIT_SHA1_HEXSZ)
 		/* one more abbrev length is needed for the boundary commit */
 		abbrev++;
