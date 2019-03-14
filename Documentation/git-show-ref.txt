@@ -66,6 +66,9 @@ OPTIONS
 
 	Abbreviate the object name.  When using `--hash`, you do
 	not have to say `--hash --abbrev`; `--hash=n` would do.
++
+Can also be set to a relative value, see `core.abbrev` in
+linkgit:git-diff[1].
 
 -q::
 --quiet::

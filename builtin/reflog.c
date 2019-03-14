@@ -606,6 +606,13 @@ static int cmd_reflog_expire(int argc, const char **argv, const char *prefix)
 		mark_reachable_objects(&cb.cmd.revs, 0, 0, NULL);
 		if (flags & EXPIRE_REFLOGS_VERBOSE)
 			putchar('\n');
+	} else if (!cb.cmd.expire_total && !cb.cmd.expire_unreachable) {
+		/*
+		 * If we're not expiring anything and not dropping
+		 * stale entries, there's no point in even opening the
+		 * reflogs, since we're guaranteed to do nothing.
+		 */
+		return 0;
 	}
 
 	if (do_all) {
