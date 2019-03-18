@@ -669,3 +669,52 @@ core.abbrev::
 	in your repository, which hopefully is enough for
 	abbreviated object names to stay unique for some time.
 	The minimum length is 4.
++
+This can also be set to relative values such as `+2` or `-2`, which
+means to add or subtract N characters from the SHA-1 that Git would
+otherwise print, this allows for producing more future-proof SHA-1s
+for use within a given project, while adjusting the value for the
+current approximate number of objects.
++
+This is especially useful in combination with the
+`core.validateAbbrev` setting, or to get more future-proof hashes to
+reference in the future in a repository whose number of objects is
+expected to grow.
+
+core.validateAbbrev::
+	If set to false (true by default) don't do any validation when
+	printing abbreviated object names to see if they're really
+	unique. This makes printing objects more performant at the
+	cost of potentially printing object names that aren't unique
+	within the current repository.
++
+When printing abbreviated object names Git needs to look through the
+local object store. This is an `O(log N)` operation assuming all the
+objects are in a single pack file, but `X * O(log N)` given `X` pack
+files, which can get expensive on some larger repositories.
++
+This setting changes that to `O(1)`, but with the trade-off that
+depending on the value of `core.abbrev` we may be printing abbreviated
+hashes that collide. Too see how likely this is, try running:
++
+-----------------------------------------------------------------------------------------------------------
+git log --all --pretty=format:%h --abbrev=4 | perl -nE 'chomp; say length' | sort | uniq -c | sort -nr
+-----------------------------------------------------------------------------------------------------------
++
+This shows how many commits were found at each abbreviation length. On
+linux.git in June 2018 this shows a bit more than 750,000 commits,
+with just 4 needing 11 characters to be fully abbreviated, and the
+default heuristic picks a length of 12.
++
+Even without `core.validateAbbrev=false` the results abbreviation
+already a bit of a probability game. They're guaranteed at the moment
+of generation, but as more objects are added, ambiguities may be
+introduced. Likewise, what's unambiguous for you may not be for
+somebody else you're communicating with, if they have their own clone.
++
+Therefore the default of `core.validateAbbrev=true` may not save you
+in practice if you're sharing the SHA-1 or noting it now to use after
+a `git fetch`. You may be better off setting `core.abbrev` to
+e.g. `+2` to add 2 extra characters to the SHA-1, and possibly combine
+that with `core.validateAbbrev=false` to get a reasonable trade-off
+between safety and performance.

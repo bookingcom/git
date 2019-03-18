@@ -182,6 +182,9 @@ This option is only applicable in non-verbose mode.
 	Alter the sha1's minimum display length in the output listing.
 	The default value is 7 and can be overridden by the `core.abbrev`
 	config option.
++
+Can also be set to a relative value, see `core.abbrev` in
+linkgit:git-diff[1].
 
 --no-abbrev::
 	Display the full sha1s in the output listing rather than abbreviating them.
