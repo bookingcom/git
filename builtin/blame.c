@@ -37,6 +37,7 @@ static const char *blame_opt_usage[] = {
 	NULL
 };
 
+static int blameless_culture;
 static int longest_file;
 static int longest_author;
 static int max_orig_digits;
@@ -692,6 +693,10 @@ static int git_blame_config(const char *var, const char *value, void *cb)
 		blank_boundary = git_config_bool(var, value);
 		return 0;
 	}
+	if (!strcmp(var, "blame.culture")) {
+		blameless_culture = !strcmp(value, "blameless");
+		return 0;
+	}
 	if (!strcmp(var, "blame.showemail")) {
 		int *output_option = cb;
 		if (git_config_bool(var, value))
@@ -873,6 +878,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 
 	struct parse_opt_ctx_t ctx;
 	int cmd_is_annotate = !strcmp(argv[0], "annotate");
+	int cmd_is_praise = !strcmp(argv[0], "praise");
 	struct range_set ranges;
 	unsigned int range_i;
 	long anchor;
@@ -935,6 +941,9 @@ parse_done:
 	if (cmd_is_annotate) {
 		output_option |= OUTPUT_ANNOTATE_COMPAT;
 		blame_date_mode.type = DATE_ISO8601;
+	} else if (!cmd_is_praise && blameless_culture &&
+		   !(output_option & OUTPUT_PORCELAIN)) {
+		die(_("must be invoked as 'git praise' with 'blame.culture=blameless' set!"));
 	} else {
 		blame_date_mode = revs.date_mode;
 	}
