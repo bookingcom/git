@@ -1,3 +1,9 @@
+blame.culture::
+	Set to 'blameless' to enforce the use of the functionality of
+	linkgit:git-blame[1] in blameless cultural settings by direct
+	invocations of linkgit:git-blame[1] an error. Defaults to
+	'hostile', which is the default.
+
 blame.blankBoundary::
 	Show blank commit object name for boundary commits in
 	linkgit:git-blame[1]. This option defaults to false.

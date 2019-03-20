@@ -48,6 +48,21 @@ test_expect_success 'blame with no options and no config' '
 	test_cmp expected_n result
 '
 
+test_expect_success 'praise' '
+	git praise --show-email one >praise1 &&
+	find_blame <praise1 >result &&
+	test_cmp expected_e result &&
+
+	git praise --no-show-email one >praise2 &&
+	find_blame <praise2 >result &&
+	test_cmp expected_n result
+'
+
+test_expect_success 'enforced praise' '
+	test_must_fail git -c blame.culture=blameless blame one 2>err &&
+	test_i18ngrep "must be.*git praise" err
+'
+
 test_expect_success 'blame with showemail options' '
 	git blame --show-email one >blame1 &&
 	find_blame <blame1 >result &&
