@@ -7,6 +7,18 @@ blame.culture::
 +
 Note that the `--porcelain` format for machine consumption is exempt
 from this enforcement to avoid breaking existing scripts.
++
+See `blame.culture.enforcement` below for tweaking the error behavior.
+
+blame.culture.enforcement::
+	When `blame.culture=blameless` is set invoking
+	linkgit:git-blame[1] becomes an `error` This variable can also
+	be set to `warning` to only warn, and to either
+	`error:interactive` or `warning:interactive` to only error out
+	or warn if stderr is connected to a TTY.
++
+This allows for enforcing a blameless culture on interactive users,
+while leaving any automated use alone.
 
 blame.blankBoundary::
 	Show blank commit object name for boundary commits in

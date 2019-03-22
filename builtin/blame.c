@@ -62,6 +62,12 @@ static size_t blame_date_width;
 
 static struct string_list mailmap = STRING_LIST_INIT_NODUP;
 
+static enum {
+	BLAME_ENFORCE_ERROR		= 1<<0,
+	BLAME_ENFORCE_WARNING		= 1<<1,
+	BLAME_ENFORCE_INTERACTIVE	= 1<<2
+} blame_culture_enforcement = BLAME_ENFORCE_ERROR;
+
 #ifndef DEBUG_BLAME
 #define DEBUG_BLAME 0
 #endif
@@ -697,6 +703,19 @@ static int git_blame_config(const char *var, const char *value, void *cb)
 		blameless_culture = !strcmp(value, "blameless");
 		return 0;
 	}
+	if (!strcmp(var, "blame.culture.enforcement")) {
+		if (!strcmp(value, "error"))
+			blame_culture_enforcement = BLAME_ENFORCE_ERROR;
+		else if (!strcmp(value, "error:interactive"))
+			blame_culture_enforcement = (BLAME_ENFORCE_ERROR |
+						     BLAME_ENFORCE_INTERACTIVE);
+		else if (!strcmp(value, "warning"))
+			blame_culture_enforcement = BLAME_ENFORCE_WARNING;
+		else if (!strcmp(value, "warning:interactive"))
+			blame_culture_enforcement = (BLAME_ENFORCE_WARNING |
+						     BLAME_ENFORCE_INTERACTIVE);
+		return 0;
+	}
 	if (!strcmp(var, "blame.showemail")) {
 		int *output_option = cb;
 		if (git_config_bool(var, value))
@@ -943,7 +962,13 @@ parse_done:
 		blame_date_mode.type = DATE_ISO8601;
 	} else if (!cmd_is_praise && blameless_culture &&
 		   !(output_option & OUTPUT_PORCELAIN)) {
-		die(_("must be invoked as 'git praise' with 'blame.culture=blameless' set!"));
+		if (!(blame_culture_enforcement & BLAME_ENFORCE_INTERACTIVE) ||
+		    isatty(2)) {
+			if (blame_culture_enforcement & BLAME_ENFORCE_ERROR)
+				die(_("must be invoked as 'git praise' with 'blame.culture=blameless' set!"));
+			else if (blame_culture_enforcement & BLAME_ENFORCE_WARNING)
+				warning(_("should be invoked as 'git praise' with 'blame.culture=blameless' set!"));
+		}
 	} else {
 		blame_date_mode = revs.date_mode;
 	}
