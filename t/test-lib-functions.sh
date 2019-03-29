@@ -615,6 +615,29 @@ test_path_is_missing () {
 	fi
 }
 
+# test_byte_count checks that a file has the number of bytes it
+# ought to. For example:
+#
+#	test_expect_success 'produce exactly one byte of output' '
+#		do something >output &&
+#		test_byte_count = 1 output
+#	'
+#
+# is like "test $(wc -c <output) = 1" except that it passes the
+# output through when the number of bytes is wrong.
+
+test_byte_count () {
+	if test $# != 3
+	then
+		error "bug in the test script: not 3 parameters to test_byte_count"
+	elif ! test $(wc -c <"$3") "$1" "$2"
+	then
+		echo "test_byte_count: byte count for $3 !$1 $2"
+		cat "$3"
+		return 1
+	fi
+}
+
 # test_line_count checks that a file has the number of lines it
 # ought to. For example:
 #

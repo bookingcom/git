@@ -346,4 +346,14 @@ test_expect_success UNTRACKED_CACHE 'ignore .git changes when invalidating UNTR'
 	test_cmp before after
 '
 
+test_expect_success 'discard_index() also discards fsmonitor info' '
+	test_when_finished \
+		"git config core.monitor .git/hooks/fsmonitor-test" &&
+	test_config core.fsmonitor "$TEST_DIRECTORY/t7519/fsmonitor-all" &&
+	test_might_fail git update-index --refresh &&
+	test-tool read-cache --print-and-refresh=tracked 2 >actual &&
+	printf "tracked is%s up to date\n" "" " not" >expect &&
+	test_cmp expect actual
+'
+
 test_done
