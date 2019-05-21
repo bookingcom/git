@@ -18,9 +18,14 @@ Computes the object ID value for an object with specified type
 with the contents of the named file (which can be outside of the
 work tree), and optionally writes the resulting object into the
 object database.  Reports its object ID to its standard output.
-This is used by 'git cvsimport' to update the index
-without modifying files in the work tree.  When <type> is not
-specified, it defaults to "blob".
+When <type> is not specified, it defaults to "blob".
+
+This command won't take the shortcut of seeing if the path(s) to be
+hashed are present in the index, in which case their already computed
+object ID could be retrieved by linkgit:git-ls-files[1] via the
+`--stage` option, or by linkgit:git-rev-parse[1]. Use those instead of
+e.g. `--stdin-paths` if the intent is to say find the blob object IDs
+of checked-out files.
 
 OPTIONS
 -------
@@ -30,6 +35,12 @@ OPTIONS
 
 -w::
 	Actually write the object into the object database.
++
+No guarantees are made as to how the object is added to the database
+(e.g. whether as a loose object, or streamed to a pack), except in the
+case of the `--literally` option. How it's written may depend on
+heuristics such as the `core.bigFileThreshold` configuration variable
+(see linkgit:git-config[1]).
 
 --stdin::
 	Read the object from standard input instead of from a file.
@@ -55,10 +66,11 @@ OPTIONS
 	is always implied, unless the `--path` option is given.
 
 --literally::
-	Allow `--stdin` to hash any garbage into a loose object which might not
+	Allow for hashing arbitrary data which might not
 	otherwise pass standard object parsing or git-fsck checks. Useful for
 	stress-testing Git itself or reproducing characteristics of corrupt or
-	bogus objects encountered in the wild.
+	bogus objects encountered in the wild. When writing objects guarantees
+	that the written object will be a loose object, for ease of debugging.
 
 GIT
 ---

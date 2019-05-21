@@ -117,6 +117,7 @@ test_expect_failure 'clone --local detects misnamed objects' '
 '
 
 test_expect_success 'fetch into corrupted repo with index-pack' '
+	sane_unset GIT_TEST_CHECK_COLLISIONS &&
 	cp -R bit-error bit-error-cp &&
 	test_when_finished "rm -rf bit-error-cp" &&
 	(
@@ -134,6 +135,38 @@ test_expect_success 'internal tree objects are not "missing"' '
 		empty_tree=$(git hash-object -t tree /dev/null) &&
 		commit=$(echo foo | git commit-tree $empty_tree) &&
 		git rev-list --objects $commit
+	)
+'
+
+test_expect_success 'repair a corrupted repo with index-pack' '
+	sane_unset GIT_TEST_CHECK_COLLISIONS &&
+	cp -R bit-error bit-error-cp &&
+	test_when_finished "rm -rf bit-error-cp" &&
+	(
+		cd bit-error-cp &&
+
+		# Have the corrupt object still and fsck complains
+		test_must_fail git cat-file blob HEAD:content.t &&
+		test_must_fail git fsck 2>stderr &&
+		test_i18ngrep "corrupt or missing" stderr &&
+
+		# Fetch the new object (as a pack). The transfer.unpackLimit=1
+		# setting here is important, we must end up with a pack, not a
+		# loose object. The latter would fail due to "exists? Do not
+		# bother" semantics unrelated to the collision check.
+		git -c transfer.unpackLimit=1 \
+			-c core.checkCollisions=false \
+			fetch ../no-bit-error 2>stderr &&
+
+		# fsck still complains, but we have the non-corrupt object
+		# (we lookup in packs first)
+		test_must_fail git fsck 2>stderr &&
+		test_i18ngrep "corrupt or missing" stderr &&
+		git cat-file blob HEAD:content.t &&
+
+		# A "gc" will remove the now-redundant and corrupt object
+		git gc &&
+		git fsck
 	)
 '
 

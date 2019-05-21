@@ -774,10 +774,11 @@ static void sha1_object(const void *data, struct object_entry *obj_entry,
 {
 	void *new_data = NULL;
 	int collision_test_needed = 0;
+	int do_collision_check = git_config_get_collision_check();
 
 	assert(data || obj_entry);
 
-	if (startup_info->have_repository) {
+	if (do_collision_check && startup_info->have_repository) {
 		read_lock();
 		collision_test_needed =
 			has_object_file_with_flags(oid, OBJECT_INFO_QUICK);
