@@ -2008,9 +2008,11 @@ int cmd_rebase(int argc, const char **argv, const char *prefix)
 	 * and if this is not an interactive rebase.
 	 */
 	if (can_fast_forward(options.onto, &options.orig_head, &merge_base) &&
-	    !is_interactive(&options) && !options.restrict_revision &&
+	    !is_interactive(&options) &&
 	    options.upstream &&
-	    !oidcmp(&options.upstream->object.oid, &options.onto->object.oid)) {
+	    (options.restrict_revision
+	     ? !oidcmp(&options.upstream->object.oid, &options.restrict_revision->object.oid)
+	     : !oidcmp(&options.upstream->object.oid, &options.onto->object.oid))) {
 		int flag;
 
 		if (!(options.flags & REBASE_FORCE)) {

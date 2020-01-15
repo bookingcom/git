@@ -38,6 +38,7 @@ static const char *blame_opt_usage[] = {
 	NULL
 };
 
+static int blameless_culture;
 static int longest_file;
 static int longest_author;
 static int max_orig_digits;
@@ -58,6 +59,12 @@ static struct date_mode blame_date_mode = { DATE_ISO8601 };
 static size_t blame_date_width;
 
 static struct string_list mailmap = STRING_LIST_INIT_NODUP;
+
+static enum {
+	BLAME_ENFORCE_ERROR		= 1<<0,
+	BLAME_ENFORCE_WARNING		= 1<<1,
+	BLAME_ENFORCE_INTERACTIVE	= 1<<2
+} blame_culture_enforcement = BLAME_ENFORCE_ERROR;
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -682,6 +689,23 @@ static int git_blame_config(const char *var, const char *value, void *cb)
 		blank_boundary = git_config_bool(var, value);
 		return 0;
 	}
+	if (!strcmp(var, "blame.culture")) {
+		blameless_culture = !strcmp(value, "blameless");
+		return 0;
+	}
+	if (!strcmp(var, "blame.culture.enforcement")) {
+		if (!strcmp(value, "error"))
+			blame_culture_enforcement = BLAME_ENFORCE_ERROR;
+		else if (!strcmp(value, "error:interactive"))
+			blame_culture_enforcement = (BLAME_ENFORCE_ERROR |
+						     BLAME_ENFORCE_INTERACTIVE);
+		else if (!strcmp(value, "warning"))
+			blame_culture_enforcement = BLAME_ENFORCE_WARNING;
+		else if (!strcmp(value, "warning:interactive"))
+			blame_culture_enforcement = (BLAME_ENFORCE_WARNING |
+						     BLAME_ENFORCE_INTERACTIVE);
+		return 0;
+	}
 	if (!strcmp(var, "blame.showemail")) {
 		int *output_option = cb;
 		if (git_config_bool(var, value))
@@ -829,6 +853,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 
 	struct parse_opt_ctx_t ctx;
 	int cmd_is_annotate = !strcmp(argv[0], "annotate");
+	int cmd_is_praise = !strcmp(argv[0], "praise");
 	struct range_set ranges;
 	unsigned int range_i;
 	long anchor;
@@ -890,6 +915,15 @@ parse_done:
 	if (cmd_is_annotate) {
 		output_option |= OUTPUT_ANNOTATE_COMPAT;
 		blame_date_mode.type = DATE_ISO8601;
+	} else if (!cmd_is_praise && blameless_culture &&
+		   !(output_option & OUTPUT_PORCELAIN)) {
+		if (!(blame_culture_enforcement & BLAME_ENFORCE_INTERACTIVE) ||
+		    isatty(2)) {
+			if (blame_culture_enforcement & BLAME_ENFORCE_ERROR)
+				die(_("must be invoked as 'git praise' with 'blame.culture=blameless' set!"));
+			else if (blame_culture_enforcement & BLAME_ENFORCE_WARNING)
+				warning(_("should be invoked as 'git praise' with 'blame.culture=blameless' set!"));
+		}
 	} else {
 		blame_date_mode = revs.date_mode;
 	}

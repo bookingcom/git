@@ -88,6 +88,74 @@ core.untrackedCache::
 	properly on your system.
 	See linkgit:git-update-index[1]. `keep` by default.
 
+core.checkCollisions::
+	When missing or set to `default` Git will assert when writing
+	a given object that it doesn't exist already anywhere else in
+	the object store (also accounting for
+	`GIT_ALTERNATE_OBJECT_DIRECTORIES` et al, see
+	linkgit:git[1]).
++
+The reasons for why this is on by default are:
++
+--
+. If there's ever a new SHA-1 collision attack similar to the
+  SHAttered attack (see https://shattered.io) Git can't be fooled into
+  replacing an existing known-good object with a new one with the same
+  SHA-1.
++
+Note that Git by default is built with a hardened version of SHA-1
+function with collision detection for attacks like the SHAttered
+attack (see link:technical/hash-function-transition.html[the hash
+function transition documentation]), but new future attacks might not
+be detected by the hardened SHA-1 code.
+
+. It serves as a canary for detecting some instances of repository
+  corruption. The type and size of the existing and new objects are
+  compared, if they differ Git will panic and abort. This can happen
+  e.g. if a loose object's content has been truncated or otherwise
+  mangled by filesystem corruption.
+--
++
+The reasons to disable this are, respectively:
++
+--
+. Doing the "does this object exist already?" check can be expensive,
+  and it's always cheaper to do nothing.
++
+Even on a very fast local disk (e.g. SSD) cloning a repository like
+git.git spends around 5% of its time just in `lstat()`. This
+percentage can get much higher (up to even hundreds of percents!) on
+network filesystems like NFS where metadata operations can be much
+slower.
++
+This is because with the collision check every object in an incoming
+packfile must be checked against any existing packfiles, as well as
+the loose object store (most of the `lstat()` time is spent on the
+latter). Git doesn't guarantee that some concurrent process isn't
+writing to the same repository during a `clone`. The same sort of
+slowdowns can be seen when doing a big fetch (lots of objects to write
+out).
+
+. If you have a corrupt local repository this check can prevent
+  repairing it by fetching a known-good version of the same object
+  from a remote repository. See the "repair a corrupted repo with
+  index-pack" test in the `t1060-object-corruption.sh` test in the git
+  source code.
+--
++
+Consider turning this off if you're more concerned about performance
+than you are about hypothetical future SHA-1 collisions or object
+corruption (linkgit:git-fsck[1] will also catch object
+corruption). This setting can also be disabled during specific
+phases/commands that can be bottlenecks, e.g. with `git -c
+core.checkCollisions=false clone [...]` for an initial clone on NFS.
++
+Setting this to `false` will disable object collision
+checking. I.e. the value can either be "default" or a boolean. Other
+values might be added in the future (e.g. for selectively disabling
+this just for "clone"), but now any non-boolean non-"default" values
+error out.
+
 core.checkStat::
 	When missing or is set to `default`, many fields in the stat
 	structure are checked to detect if a file has been modified
