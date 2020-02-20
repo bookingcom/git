@@ -2,6 +2,7 @@
 
 test_description='git blame'
 . ./test-lib.sh
+. "$TEST_DIRECTORY/lib-terminal.sh"
 
 PROG='git blame -c'
 . "$TEST_DIRECTORY"/annotate-tests.sh
@@ -46,6 +47,48 @@ test_expect_success 'blame with no options and no config' '
 	git blame one >blame &&
 	find_blame <blame >result &&
 	test_cmp expected_n result
+'
+
+test_expect_success 'praise' '
+	git praise --show-email one >praise1 &&
+	find_blame <praise1 >result &&
+	test_cmp expected_e result &&
+
+	git praise --no-show-email one >praise2 &&
+	find_blame <praise2 >result &&
+	test_cmp expected_n result
+'
+
+test_expect_success 'enforced praise' '
+	test_must_fail git -c blame.culture=blameless blame one 2>err &&
+	test_i18ngrep "must be.*git praise" err &&
+	test_must_fail git -c blame.culture=blameless \
+		-c blame.culture.enforcement=error blame one 2>err &&
+	test_i18ngrep "must be.*git praise" err
+'
+
+test_expect_success 'recommended praise' '
+	git -c blame.culture=blameless \
+		-c blame.culture.enforcement=warning blame one 2>err &&
+	test_i18ngrep "should be.*git praise" err
+'
+
+test_expect_success TTY 'interactive: praise blame.culture.enforcement=*:interactive' '
+	test_must_fail test_terminal git -c blame.culture=blameless \
+		-c blame.culture.enforcement=error:interactive blame one 2>err &&
+	test_i18ngrep "must be.*git praise" err &&
+	test_terminal git -c blame.culture=blameless \
+		-c blame.culture.enforcement=warning:interactive blame one 2>err &&
+	test_i18ngrep "should be.*git praise" err
+'
+
+test_expect_success TTY 'non-interactive: praise blame.culture.enforcement=*:interactive' '
+	git -c blame.culture=blameless \
+		-c blame.culture.enforcement=error:interactive blame one 2>err &&
+	test_i18ngrep ! "must be.*git praise" err &&
+	git -c blame.culture=blameless \
+		-c blame.culture.enforcement=warning:interactive blame one 2>err &&
+	test_i18ngrep ! "should be.*git praise" err
 '
 
 test_expect_success 'blame with showemail options' '
