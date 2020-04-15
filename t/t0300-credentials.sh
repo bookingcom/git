@@ -240,6 +240,57 @@ test_expect_success 'do not match configured credential' '
 	EOF
 '
 
+test_expect_success 'match multiple configured helpers' '
+	test_config credential.helper "verbatim \"\" \"\"" &&
+	test_config credential.https://example.com.helper "$HELPER" &&
+	check fill <<-\EOF
+	protocol=https
+	host=example.com
+	path=repo.git
+	--
+	protocol=https
+	host=example.com
+	username=foo
+	password=bar
+	--
+	verbatim: get
+	verbatim: protocol=https
+	verbatim: host=example.com
+	EOF
+'
+
+test_expect_success 'match multiple configured helpers with URLs' '
+	test_config credential.https://example.com/repo.git.helper "verbatim \"\" \"\"" &&
+	test_config credential.https://example.com.helper "$HELPER" &&
+	check fill <<-\EOF
+	protocol=https
+	host=example.com
+	path=repo.git
+	--
+	protocol=https
+	host=example.com
+	username=foo
+	password=bar
+	--
+	verbatim: get
+	verbatim: protocol=https
+	verbatim: host=example.com
+	EOF
+'
+
+test_expect_success 'match percent-encoded values' '
+	test_config credential.https://example.com/%2566.git.helper "$HELPER" &&
+	check fill <<-\EOF
+	url=https://example.com/%2566.git
+	--
+	protocol=https
+	host=example.com
+	username=foo
+	password=bar
+	--
+	EOF
+'
+
 test_expect_success 'pull username from config' '
 	test_config credential.https://example.com.username foo &&
 	check fill <<-\EOF
@@ -252,6 +303,63 @@ test_expect_success 'pull username from config' '
 	password=askpass-password
 	--
 	askpass: Password for '\''https://foo@example.com'\'':
+	EOF
+'
+
+test_expect_success 'honors username from URL over helper (URL)' '
+	test_config credential.https://example.com.username bob &&
+	test_config credential.https://example.com.helper "verbatim \"\" bar" &&
+	check fill <<-\EOF
+	url=https://alice@example.com
+	--
+	protocol=https
+	host=example.com
+	username=alice
+	password=bar
+	--
+	verbatim: get
+	verbatim: protocol=https
+	verbatim: host=example.com
+	verbatim: username=alice
+	EOF
+'
+
+test_expect_success 'honors username from URL over helper (components)' '
+	test_config credential.https://example.com.username bob &&
+	test_config credential.https://example.com.helper "verbatim \"\" bar" &&
+	check fill <<-\EOF
+	protocol=https
+	host=example.com
+	username=alice
+	--
+	protocol=https
+	host=example.com
+	username=alice
+	password=bar
+	--
+	verbatim: get
+	verbatim: protocol=https
+	verbatim: host=example.com
+	verbatim: username=alice
+	EOF
+'
+
+test_expect_success 'last matching username wins' '
+	test_config credential.https://example.com/path.git.username bob &&
+	test_config credential.https://example.com.username alice &&
+	test_config credential.https://example.com.helper "verbatim \"\" bar" &&
+	check fill <<-\EOF
+	url=https://example.com/path.git
+	--
+	protocol=https
+	host=example.com
+	username=alice
+	password=bar
+	--
+	verbatim: get
+	verbatim: protocol=https
+	verbatim: host=example.com
+	verbatim: username=alice
 	EOF
 '
 
@@ -289,6 +397,26 @@ test_expect_success 'http paths can be part of context' '
 	EOF
 '
 
+test_expect_success 'context uses urlmatch' '
+	test_config "credential.https://*.org.useHttpPath" true &&
+	check fill "verbatim foo bar" <<-\EOF
+	protocol=https
+	host=example.org
+	path=foo.git
+	--
+	protocol=https
+	host=example.org
+	path=foo.git
+	username=foo
+	password=bar
+	--
+	verbatim: get
+	verbatim: protocol=https
+	verbatim: host=example.org
+	verbatim: path=foo.git
+	EOF
+'
+
 test_expect_success 'helpers can abort the process' '
 	test_must_fail git \
 		-c credential.helper="!f() { echo quit=1; }; f" \
@@ -305,6 +433,20 @@ test_expect_success 'empty helper spec resets helper list' '
 	password=cmdline
 	--
 	verbatim: get
+	EOF
+'
+
+test_expect_success 'url parser ignores embedded newlines' '
+	check fill <<-EOF
+	url=https://one.example.com?%0ahost=two.example.com/
+	--
+	username=askpass-username
+	password=askpass-password
+	--
+	warning: url contains a newline in its host component: https://one.example.com?%0ahost=two.example.com/
+	warning: skipping credential lookup for url: https://one.example.com?%0ahost=two.example.com/
+	askpass: Username:
+	askpass: Password:
 	EOF
 '
 
