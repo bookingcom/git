@@ -1,0 +1,20 @@
+git-praise(1)
+============
+
+NAME
+----
+git-praise - A culturally sensitive alias for git-blame
+
+DESCRIPTION
+-----------
+
+Annotates each line in the given file without compromising the
+cultural integrity of blameless cultures.
+
+The functionality of this command is equivalent to
+linkgit:git-blame[1]. Its use can be enforced by setting
+`blame.culture=blameless` in the config. See linkgit:git-config[1].
+
+GIT
+---
+Part of the linkgit:git[1] suite
